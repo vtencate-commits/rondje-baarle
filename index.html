@@ -113,7 +113,7 @@ body{background:var(--body-bg);font-family:'Outfit',-apple-system,sans-serif;col
     <div><div class="logo-text-main">Rondje Baarle</div><div class="logo-text-sub">Official<span>&reg;</span></div></div>
   </div>
   <div class="header-right">
-    <div class="route-meta">53.8 km &middot; 55m &uarr;</div>
+    <div class="route-meta">56 km &middot; 55m &uarr;</div>
     <button class="theme-toggle" id="themeToggle" title="Wissel thema">&#127769;</button>
   </div>
 </header>
@@ -249,18 +249,22 @@ function startWind(wd,ws){
   if(windAnimId)cancelAnimationFrame(windAnimId);var cv=document.getElementById('windCanvas');if(!cv)return;
   var ctx=cv.getContext('2d'),d=window.devicePixelRatio||1,w=cv.width,h=cv.height;
   var isLight=document.documentElement.getAttribute('data-theme')==='light';
-  var pAlpha=isLight?0.75:0.6;var pWidth=isLight?2.2:1.8;var pSize=isLight?2.5:2.0;var tAlpha=isLight?0.55:0.4;
   var rad=(wd+180)*Math.PI/180,vx=Math.sin(rad)*ws*0.35*d,vy=-Math.cos(rad)*ws*0.35*d;
-  var n=Math.min(300,Math.floor(60+ws*14)),ps=[];
-  for(var i=0;i<n;i++)ps.push({x:Math.random()*w,y:Math.random()*h,age:Math.random()*80,ma:55+Math.random()*55,sp:0.6+Math.random()*0.8});
+  var n=Math.min(200,Math.floor(40+ws*10)),ps=[];
+  for(var i=0;i<n;i++)ps.push({x:Math.random()*w,y:Math.random()*h,age:Math.random()*100,ma:70+Math.random()*60,sp:0.5+Math.random()*0.7});
   var sc=ws<5?[74,222,128]:ws<10?[250,204,21]:ws<15?[249,115,22]:[239,68,68];
   if(isLight){sc=ws<5?[22,163,74]:ws<10?[161,98,7]:ws<15?[194,65,12]:[185,28,28]}
+  var arrowLen=(6+ws*0.5)*d;var arrowW=3*d;
   function go(){ctx.clearRect(0,0,w,h);for(var j=0;j<ps.length;j++){var p=ps[j];p.x+=vx*p.sp;p.y+=vy*p.sp;p.age++;
-    if(p.age>p.ma||p.x<-20||p.x>w+20||p.y<-20||p.y>h+20){p.x=Math.random()*w-vx*15;p.y=Math.random()*h-vy*15;p.age=0;p.ma=55+Math.random()*55}
-    var l=p.age/p.ma,a=l<0.15?l/0.15:l>0.7?(1-l)/0.3:1;a=Math.max(0,Math.min(pAlpha,a*pAlpha));
-    var tl=Math.min(20,ws*1.3)*d*p.sp;ctx.beginPath();ctx.moveTo(p.x-Math.sin(rad)*tl,p.y+Math.cos(rad)*tl);ctx.lineTo(p.x,p.y);
-    ctx.strokeStyle='rgba('+sc[0]+','+sc[1]+','+sc[2]+','+(a*tAlpha)+')';ctx.lineWidth=pWidth*d;ctx.stroke();
-    ctx.beginPath();ctx.arc(p.x,p.y,pSize*d,0,Math.PI*2);ctx.fillStyle='rgba('+sc[0]+','+sc[1]+','+sc[2]+','+a+')';ctx.fill()}
+    if(p.age>p.ma||p.x<-30||p.x>w+30||p.y<-30||p.y>h+30){p.x=Math.random()*w-vx*20;p.y=Math.random()*h-vy*20;p.age=0;p.ma=70+Math.random()*60}
+    var l=p.age/p.ma;var a=l<0.2?l/0.2:l>0.65?(1-l)/0.35:1;a=Math.max(0,Math.min(isLight?0.7:0.55,a*(isLight?0.7:0.55)));
+    var al=arrowLen*p.sp;var tx=p.x;var ty=p.y;var bx=tx-Math.sin(rad)*al;var by=ty+Math.cos(rad)*al;
+    var px1=tx+Math.cos(rad)*arrowW;var py1=ty+Math.sin(rad)*arrowW;
+    var px2=tx-Math.cos(rad)*arrowW;var py2=ty-Math.sin(rad)*arrowW;
+    ctx.beginPath();ctx.moveTo(bx,by);ctx.lineTo(tx,ty);
+    ctx.strokeStyle='rgba('+sc[0]+','+sc[1]+','+sc[2]+','+(a*0.5)+')';ctx.lineWidth=(isLight?2.2:1.8)*d;ctx.lineCap='round';ctx.stroke();
+    ctx.beginPath();ctx.moveTo(px1,py1);ctx.lineTo(tx+Math.sin(rad)*4*d,ty-Math.cos(rad)*4*d);ctx.lineTo(px2,py2);
+    ctx.fillStyle='rgba('+sc[0]+','+sc[1]+','+sc[2]+','+a+')';ctx.fill()}
     windAnimId=requestAnimationFrame(go)}go()
 }
 
@@ -331,29 +335,23 @@ function getClothing(temp,feelsLike,windSpeedMs,clouds,rain,rainProb){
   var eff=calcEffTemp(temp,windSpeedMs,clouds,rain,rainProb||0);
   var wKmh=windSpeedMs*3.6;
   var sunny=clouds<30;
-  var partlyCloudy=clouds>=30&&clouds<70;
 
-  /* BASE OUTFIT */
   var cat,color,icon,desc;
-  if(eff>22){cat='KORT / KORT';color='#22c55e';icon='\u2600\uFE0F';desc='Korte broek en kort fietsshirt. Lichte kleuren en zonnebescherming.';}
-  else if(eff>=18){cat='KORT / KORT';color='#84cc16';icon='\uD83C\uDF24\uFE0F';desc='Korte broek en kort fietsshirt met dun ondershirt.';}
-  else if(eff>=14){cat='KORT / LANG';color='#eab308';icon='\uD83C\uDF25\uFE0F';desc='Korte broek, shirt met lange mouwen of armstukken.';}
-  else if(eff>=10){cat='KORT / LANG';color='#d97706';icon='\uD83C\uDF25\uFE0F';desc='Korte broek met beenstukken, shirt met armstukken.';}
-  else if(eff>=7){cat='LANG / KORT';color='#f97316';icon='\uD83C\uDF27\uFE0F';desc='Lange mouwen, korte broek met beenstukken of lange broek.';}
-  else if(eff>=4){cat='LANG / LANG';color='#ea580c';icon='\uD83C\uDF27\uFE0F';desc='Lange broek en fietsjack met lange mouwen. Werk in laagjes.';}
-  else if(eff>=0){cat='LANG / LANG';color='#ef4444';icon='\u2744\uFE0F';desc='Winteruitrusting. Thermogevoerde lange broek, winddicht winterjack.';}
-  else{cat='LANG / LANG';color='#dc2626';icon='\uD83E\uDD76';desc='Extreme kou. Volledige wintersetup met meerdere lagen, bescherm alle uiteinden.';}
+  if(eff>22){cat='KORT / KORT';color='#22c55e';icon='\u2600\uFE0F';desc='Korte broek en kort fietsshirt. Kies lichte kleuren en neem zonnebescherming mee.';}
+  else if(eff>=18){cat='KORT / KORT';color='#84cc16';icon='\uD83C\uDF24\uFE0F';desc='Korte broek en kort fietsshirt. Een dun ondershirt helpt bij de zweetafvoer.';}
+  else if(eff>=14){cat='KORT / LANG';color='#eab308';icon='\uD83C\uDF25\uFE0F';desc='Korte broek gecombineerd met een shirt met lange mouwen of armstukken.';}
+  else if(eff>=10){cat='KORT / LANG';color='#d97706';icon='\uD83C\uDF25\uFE0F';desc='Korte broek met beenstukken en een shirt met armstukken. Neem een windvest mee.';}
+  else if(eff>=7){cat='LANG / KORT';color='#f97316';icon='\uD83C\uDF27\uFE0F';desc='Fietsjack met lange mouwen en een korte broek met beenstukken of een lange broek.';}
+  else if(eff>=4){cat='LANG / LANG';color='#ea580c';icon='\uD83C\uDF27\uFE0F';desc='Lange broek en fietsjack met lange mouwen. Kleed je in laagjes zodat je onderweg kunt schakelen.';}
+  else if(eff>=0){cat='LANG / LANG';color='#ef4444';icon='\u2744\uFE0F';desc='Winteruitrusting nodig. Thermogevoerde lange broek en een winddicht winterjack.';}
+  else{cat='LANG / LANG';color='#dc2626';icon='\uD83E\uDD76';desc='Extreme kou. Trek meerdere lagen aan en bescherm handen, voeten en hoofd extra goed.';}
 
-  /* EXTRAS */
   var tags=[];var notes=[];
-
-  /* Base layer */
   if(eff>20){if(sunny)tags.push('Mesh ondershirt');}
   else if(eff>=12)tags.push('Dun ondershirt');
   else if(eff>=5)tags.push('Warm ondershirt');
   else tags.push('Winter ondershirt');
 
-  /* Main pieces */
   if(eff>18){tags.push('Kort fietsshirt');tags.push('Korte fietsbroek');}
   else if(eff>=14){tags.push('Shirt + armstukken');tags.push('Korte fietsbroek');}
   else if(eff>=10){tags.push('Shirt + armstukken');tags.push('Korte broek + beenstukken');}
@@ -362,53 +360,29 @@ function getClothing(temp,feelsLike,windSpeedMs,clouds,rain,rainProb){
   else if(eff>=0){tags.push('Winterjack');tags.push('Thermo bibtights');}
   else{tags.push('Winterjack + fleece');tags.push('Thermo bibtights + legging');}
 
-  /* Gloves */
   if(eff>18){}
   else if(eff>=12)tags.push('Korte handschoenen');
   else if(eff>=6)tags.push('Dunne lange handschoenen');
   else tags.push('Winterhandschoenen');
 
-  /* Overshoes */
   if(eff<7)tags.push(eff<3?'Dikke overschoenen':'Dunne overschoenen');
   else if(eff<12&&rain>0.3)tags.push('Dunne overschoenen');
 
-  /* Wind vest */
-  if(wKmh>20||eff<16){
-    if(eff>=10)tags.push('Windvest');
-  }
+  if(wKmh>20||eff<16){if(eff>=10)tags.push('Windvest');}
 
-  /* Rain jacket */
-  if((rainProb||0)>30||rain>0.5){
-    tags.push('Regenjack');
-    notes.push('Regenkans is verhoogd, neem een regenjack mee.');
-  }
+  if((rainProb||0)>30||rain>0.5){tags.push('Regenjack');notes.push('Er is kans op regen. Neem een regenjack mee of berg er een op in je achterzak.');}
 
-  /* Neck warmer */
   if(eff<3)tags.push('Winter nekwarmer');
   else if(eff<8)tags.push('Buff');
-
-  /* Helmet cap for cold */
   if(eff<4)tags.push('Helmmuts');
-
-  /* Sun protection */
   if(sunny&&eff>12){tags.push('Zonnebril');if(eff>16)tags.push('Zonnebrand');}
 
-  /* Arm/leg piece alternatives */
-  if(eff>=10&&eff<16)notes.push('Armstukken zijn ideaal om onderweg te kunnen schakelen.');
-  if(eff>=10&&eff<16)notes.push('Beenstukken of kniestukken als alternatief voor een lange broek.');
-
-  /* Wind note */
-  if(wKmh>20)notes.push('Door de wind voelt het duidelijk kouder aan.');
-
-  /* Sun note */
-  if(sunny&&eff>=10)notes.push('De zon geeft extra warmte, mogelijk kun je een laag minder.');
-  if(sunny&&eff>20)notes.push('Volop zon, denk aan zonnebescherming.');
-
-  /* Rain + wet roads */
-  if(rain>0.3)notes.push('Nat wegdek verwacht. Let extra op gladheid en spetters.');
-
-  /* Duration note for RBO ~2h */
-  if(eff<10)notes.push('Bij 54 km trek je toch ruim 2 uur, kleed je warm genoeg.');
+  if(eff>=10&&eff<16)notes.push('Armstukken en beenstukken zijn ideaal om onderweg te schakelen als de temperatuur wisselt.');
+  if(wKmh>20)notes.push('Het waait stevig. Daardoor voelt het een stuk kouder dan de thermometer aangeeft.');
+  if(sunny&&eff>=10&&eff<20)notes.push('De zon zorgt voor extra warmte. Je kunt overwegen een laag minder aan te trekken.');
+  if(sunny&&eff>=20)notes.push('De zon is krachtig. Smeer je in en neem voldoende water mee.');
+  if(rain>0.3)notes.push('Reken op nat wegdek. Wees voorzichtig in de bochten en houd rekening met spetters.');
+  if(eff<10)notes.push('Het rondje is 56 km. Reken op ruim twee uur fietsen en kleed je daar warm genoeg voor.');
 
   return{cat:cat,color:color,icon:icon,desc:desc,tags:tags,notes:notes,effTemp:eff};
 }

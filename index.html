@@ -168,8 +168,6 @@ function initMap(){
   if(routeCoords.length>0)map.fitBounds(L.latLngBounds(routeCoords.map(function(p){return[p[0],p[1]]})).pad(0.06));
 }
 
-}
-
 function drawRoute(){
   routeLayers.forEach(function(l){map.removeLayer(l)});routeLayers=[];
   if(routeCoords.length===0)return;

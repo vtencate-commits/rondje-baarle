@@ -16,7 +16,7 @@
   --text:#e2e8f0;--text-dim:#94a3b8;--text-muted:#64748b;
   --green:#22c55e;--yellow:#eab308;--orange:#f97316;--red:#ef4444;
   --header-bg:rgba(12,18,32,0.88);--body-bg:linear-gradient(180deg,#0c1220 0%,#162032 50%,#1a2744 100%);
-  --map-filter:saturate(0.3) brightness(0.5) contrast(1.15);
+  --map-filter:none;
   --card-blur:blur(12px);--logo-color:#fff;
   --particle-alpha:0.65;--particle-trail:0.5;--particle-size:2.2;--particle-width:1.8;
 }
@@ -230,7 +230,7 @@ function drawRoute(){
     var end=Math.min(i+step+1,routeCoords.length);var seg=routeCoords.slice(i,end);
     var p1=routeCoords[i],p2=routeCoords[Math.min(i+step,routeCoords.length-1)];
     var h=bearing(p1[0],p1[1],p2[0],p2[1]);var ad=angleDiff(wd,h);var tw=Math.cos(ad*Math.PI/180);
-    var col=tw>0.3?'#22c55e':tw>-0.3?'#eab308':'#ef4444';var sh=i>=si;
+    var col=tw<-0.3?'#22c55e':tw<0.3?'#eab308':'#ef4444';var sh=i>=si;
     routeLayers.push(L.polyline(seg,{color:col,weight:sh?3:4.5,opacity:sh?0.5:0.85,lineCap:'round',lineJoin:'round'}).addTo(map));
   }
   routeLayers.push(L.marker(routeCoords[0],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div style="width:14px;height:14px;border-radius:50%;background:var(--cyan);border:2px solid var(--bg-deep);box-shadow:0 0 8px rgba(6,182,212,0.5)"></div>'})}).addTo(map));
@@ -281,7 +281,7 @@ function selectHour(h){selectedHour=Math.max(4,Math.min(20,h));buildHourSelector
 function calcScore(wd,ws){
   if(routeCoords.length<2)return 50;var ts=0,tw2=0,si=Math.floor(routeCoords.length*SHELTERED_FRAC);
   var step=Math.max(1,Math.floor(routeCoords.length/80));
-  for(var i=0;i<routeCoords.length-step;i+=step){var p1=routeCoords[i],p2=routeCoords[Math.min(i+step,routeCoords.length-1)];var h=bearing(p1[0],p1[1],p2[0],p2[1]),ad=angleDiff(wd,h),tw=Math.cos(ad*Math.PI/180);var ss=(tw+1)/2,sh=i>=si;if(sh)ss=0.5+(ss-0.5)*0.4;var pen=ws>8?(ws-8)*0.01*(1-tw)*(sh?0.3:1):0;ss=Math.max(0,ss-pen);var wt=sh?0.6:1;ts+=ss*wt;tw2+=wt}
+  for(var i=0;i<routeCoords.length-step;i+=step){var p1=routeCoords[i],p2=routeCoords[Math.min(i+step,routeCoords.length-1)];var h=bearing(p1[0],p1[1],p2[0],p2[1]),ad=angleDiff(wd,h),tw=Math.cos(ad*Math.PI/180);var ss=(1-tw)/2,sh=i>=si;if(sh)ss=0.5+(ss-0.5)*0.4;var pen=ws>8?(ws-8)*0.01*((1+tw)/2)*(sh?0.3:1):0;ss=Math.max(0,ss-pen);var wt=sh?0.6:1;ts+=ss*wt;tw2+=wt}
   return Math.max(0,Math.min(100,Math.round((ts/tw2)*100)))
 }
 

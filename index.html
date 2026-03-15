@@ -1,0 +1,1089 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rondje Baarle Official®</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg-deep: #0c1220;
+  --bg-mid: #111a2e;
+  --bg-card: rgba(30, 41, 59, 0.55);
+  --border: #1e293b;
+  --cyan: #06b6d4;
+  --cyan-dim: rgba(6, 182, 212, 0.15);
+  --text: #e2e8f0;
+  --text-dim: #94a3b8;
+  --text-muted: #64748b;
+  --green: #22c55e;
+  --yellow: #eab308;
+  --orange: #f97316;
+  --red: #ef4444;
+}
+body {
+  background: linear-gradient(180deg, var(--bg-deep) 0%, #162032 50%, #1a2744 100%);
+  font-family: 'Outfit', -apple-system, sans-serif;
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+a { color: var(--cyan); text-decoration: none; }
+
+/* HEADER */
+.header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  backdrop-filter: blur(16px);
+  background: rgba(12, 18, 32, 0.85);
+  position: sticky; top: 0; z-index: 1000;
+}
+.logo-group { display: flex; align-items: center; gap: 12px; }
+.logo-text-main {
+  font-size: 21px; font-weight: 800; letter-spacing: -0.02em;
+  line-height: 1.1; color: #fff;
+}
+.logo-text-sub {
+  font-size: 10px; font-weight: 500; letter-spacing: 0.18em;
+  color: var(--text-dim); text-transform: uppercase;
+}
+.logo-text-sub span { color: var(--cyan); }
+.route-meta {
+  font-size: 11px; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* LAYOUT */
+.container { max-width: 800px; margin: 0 auto; padding: 0 14px; }
+
+/* DAY & HOUR SELECTORS */
+.day-selector {
+  display: flex; gap: 5px; padding: 14px 0 8px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.day-btn {
+  padding: 7px 14px; border-radius: 8px;
+  border: 1px solid var(--border); background: var(--bg-card);
+  color: var(--text-dim); font-size: 12.5px; font-weight: 400;
+  cursor: pointer; white-space: nowrap; font-family: 'Outfit', sans-serif;
+  transition: all 0.2s;
+}
+.day-btn.active {
+  border-color: var(--cyan); background: var(--cyan-dim);
+  color: var(--cyan); font-weight: 600;
+}
+.hour-selector {
+  display: flex; gap: 1px; padding: 0 0 12px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+}
+.hour-btn {
+  padding: 4px 0; min-width: 28px; border-radius: 4px;
+  border: none; background: transparent;
+  color: var(--text-muted); font-size: 10px; font-weight: 400;
+  cursor: pointer; font-family: 'JetBrains Mono', monospace;
+  transition: all 0.15s; text-align: center;
+}
+.hour-btn.tick { background: rgba(30, 41, 59, 0.6); }
+.hour-btn.active {
+  background: var(--cyan); color: var(--bg-deep); font-weight: 700;
+}
+
+/* MAP */
+.map-wrap {
+  border-radius: 14px; overflow: hidden;
+  border: 1px solid var(--border); position: relative;
+}
+#map { height: 420px; width: 100%; background: var(--bg-mid); }
+.leaflet-tile-pane { filter: saturate(0.2) brightness(0.35) contrast(1.3); }
+.map-legend {
+  position: absolute; bottom: 12px; right: 12px; z-index: 800;
+  background: rgba(12, 18, 32, 0.88); border-radius: 8px;
+  padding: 10px 14px; font-size: 10px; color: var(--text-dim);
+  display: flex; flex-direction: column; gap: 5px;
+  pointer-events: none;
+}
+.map-legend-row { display: flex; align-items: center; gap: 8px; }
+.legend-line { width: 24px; height: 3px; border-radius: 2px; }
+.wind-legend-bar {
+  position: absolute; top: 12px; left: 12px; z-index: 800;
+  background: rgba(12, 18, 32, 0.88); border-radius: 8px;
+  padding: 6px 12px; display: flex; align-items: center; gap: 8px;
+  pointer-events: none;
+}
+.wind-legend-bar span {
+  font-size: 10px; color: var(--text-muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.wind-gradient-bar {
+  height: 5px; width: 100px; border-radius: 3px;
+  background: linear-gradient(90deg, #4ade80, #facc15, #f97316, #ef4444);
+}
+
+/* WIND CANVAS */
+#windCanvas {
+  position: absolute; top: 0; left: 0; z-index: 500;
+  pointer-events: none; width: 100%; height: 100%;
+}
+
+/* STATS */
+.stats-grid {
+  display: grid; grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px; margin-top: 14px;
+}
+@media (max-width: 560px) {
+  .stats-grid { grid-template-columns: 1fr; }
+}
+.stat-card {
+  background: var(--bg-card); border-radius: 14px;
+  padding: 18px 16px; border: 1px solid var(--border);
+  backdrop-filter: blur(8px);
+}
+.stat-label {
+  font-size: 10px; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.12em; margin-bottom: 6px;
+}
+.stat-big {
+  font-size: 40px; font-weight: 800; line-height: 1;
+  font-family: 'JetBrains Mono', monospace;
+}
+.stat-sub { font-size: 11px; color: var(--text-dim); margin-top: 3px; }
+.stat-detail { font-size: 11px; color: var(--text-muted); margin-top: 6px; }
+.stat-detail-row { display: flex; align-items: center; gap: 4px; margin-top: 2px; }
+
+/* WIND COMPASS */
+.compass-row { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+.compass-label { font-size: 14px; font-weight: 600; color: var(--cyan); }
+.compass-deg { font-size: 10px; color: var(--text-muted); }
+
+/* CLOTHING */
+.clothing-card {
+  margin-top: 14px; background: var(--bg-card);
+  border-radius: 14px; padding: 22px 20px;
+  border: 1px solid var(--border); backdrop-filter: blur(8px);
+}
+.clothing-inner {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  gap: 20px; flex-wrap: wrap;
+}
+.clothing-text { flex: 1 1 280px; }
+.clothing-category {
+  font-size: 26px; font-weight: 800;
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 8px;
+}
+.clothing-desc {
+  font-size: 13.5px; color: #cbd5e1; line-height: 1.65; margin-bottom: 14px;
+}
+.clothing-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.clothing-tag {
+  padding: 3px 10px; background: rgba(6, 182, 212, 0.08);
+  border: 1px solid rgba(6, 182, 212, 0.18); border-radius: 6px;
+  font-size: 11px; color: #67e8f9; font-weight: 500;
+}
+.cyclist-wrap {
+  flex: 0 0 auto; display: flex; flex-direction: column; align-items: center;
+}
+
+/* FOOTER */
+.footer {
+  text-align: center; padding: 22px 0 30px;
+  font-size: 10px; color: #1e293b;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* LOADING */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: var(--bg-deep); display: flex;
+  flex-direction: column; align-items: center; justify-content: center;
+  transition: opacity 0.3s;
+}
+.loading-overlay.hidden { opacity: 0; pointer-events: none; }
+.loading-spinner {
+  width: 40px; height: 40px; border: 3px solid var(--border);
+  border-top-color: var(--cyan); border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { margin-top: 16px; font-size: 13px; color: var(--text-dim); }
+
+/* Scrollbar */
+::-webkit-scrollbar { height: 4px; width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+/* Animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-fade { animation: fadeUp 0.5s ease-out both; }
+.anim-fade-1 { animation-delay: 0.1s; }
+.anim-fade-2 { animation-delay: 0.2s; }
+.anim-fade-3 { animation-delay: 0.3s; }
+.anim-fade-4 { animation-delay: 0.4s; }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-spinner"></div>
+  <div class="loading-text">Weerdata ophalen...</div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo-group">
+    <svg viewBox="0 0 44 44" width="42" height="42">
+      <defs>
+        <linearGradient id="lg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="#06b6d4"/>
+          <stop offset="100%" stop-color="#3b82f6"/>
+        </linearGradient>
+      </defs>
+      <circle cx="22" cy="22" r="20.5" fill="none" stroke="url(#lg)" stroke-width="2"/>
+      <circle cx="22" cy="22" r="15" fill="none" stroke="url(#lg)" stroke-width="1.2" stroke-dasharray="3.5 2.5"/>
+      <path d="M 13 27 Q 22 10 31 27" fill="none" stroke="#06b6d4" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="22" cy="19" r="2.5" fill="#3b82f6"/>
+      <text x="22" y="38" text-anchor="middle" fill="white" font-size="6" font-weight="700" font-family="'JetBrains Mono', monospace">RBO</text>
+    </svg>
+    <div>
+      <div class="logo-text-main">Rondje Baarle</div>
+      <div class="logo-text-sub">Official<span>®</span></div>
+    </div>
+  </div>
+  <div class="route-meta">53.8 km · 55m ↑</div>
+</header>
+
+<div class="container">
+  <!-- DAY SELECTOR -->
+  <div class="day-selector anim-fade anim-fade-1" id="daySelector"></div>
+
+  <!-- HOUR SELECTOR -->
+  <div class="hour-selector anim-fade anim-fade-1" id="hourSelector"></div>
+
+  <!-- MAP -->
+  <div class="map-wrap anim-fade anim-fade-2">
+    <div id="map"></div>
+    <canvas id="windCanvas"></canvas>
+    <div class="wind-legend-bar">
+      <span>m/s</span>
+      <div class="wind-gradient-bar"></div>
+      <span>0 — 20+</span>
+    </div>
+    <div class="map-legend">
+      <div class="map-legend-row">
+        <div class="legend-line" style="background: var(--green);"></div>
+        <span>Meewind</span>
+      </div>
+      <div class="map-legend-row">
+        <div class="legend-line" style="background: var(--yellow);"></div>
+        <span>Zijwind</span>
+      </div>
+      <div class="map-legend-row">
+        <div class="legend-line" style="background: var(--red);"></div>
+        <span>Tegenwind</span>
+      </div>
+      <div class="map-legend-row" style="margin-top:2px; opacity:0.7;">
+        <div class="legend-line" style="background: #38bdf8; opacity: 0.5;"></div>
+        <span>Beschut (30–56 km)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATS -->
+  <div class="stats-grid anim-fade anim-fade-3">
+    <div class="stat-card" style="text-align:center;">
+      <div class="stat-label">Ideale Windscore</div>
+      <div class="stat-big" id="windScore" style="color: var(--green);">—</div>
+      <div class="stat-sub" id="windScoreLabel">Laden...</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Weer</div>
+      <div class="stat-big" id="tempDisplay">—</div>
+      <div class="stat-sub" id="feelsLike"></div>
+      <div class="stat-detail" id="weatherDetail"></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Wind</div>
+      <div style="display:flex;align-items:baseline;gap:4px;">
+        <div class="stat-big" id="windSpeed">—</div>
+        <span style="font-size:13px;color:var(--text-dim);">m/s</span>
+      </div>
+      <div class="stat-sub" id="windGust"></div>
+      <div class="compass-row">
+        <svg id="compassSvg" viewBox="0 0 32 32" width="30" height="30">
+          <circle cx="16" cy="16" r="14" fill="none" stroke="#334155" stroke-width="1"/>
+          <text x="16" y="6.5" text-anchor="middle" fill="#64748b" font-size="5" font-family="sans-serif">N</text>
+          <g id="compassNeedle">
+            <line x1="16" y1="6" x2="16" y2="26" stroke="#06b6d4" stroke-width="2" stroke-linecap="round"/>
+            <polygon points="16,5 13,11 19,11" fill="#06b6d4"/>
+          </g>
+        </svg>
+        <div>
+          <div class="compass-label" id="windDirLabel">—</div>
+          <div class="compass-deg" id="windDirDeg"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CLOTHING -->
+  <div class="clothing-card anim-fade anim-fade-4" id="clothingCard">
+    <div class="clothing-inner">
+      <div class="clothing-text">
+        <div class="stat-label">Kledingadvies</div>
+        <div class="clothing-category" id="clothingCategory">—</div>
+        <div class="clothing-desc" id="clothingDesc"></div>
+        <div class="clothing-tags" id="clothingTags"></div>
+      </div>
+      <div class="cyclist-wrap" id="cyclistWrap"></div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Rondje Baarle Official® · Weerdata via Open-Meteo
+    <div id="dataStatus" style="margin-top:4px;font-size:9px;color:#1e293b;"></div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+// =============================================
+// ROUTE DATA — approximate waypoints for the ~54km Breda-Baarle loop
+// =============================================
+const ROUTE = [
+  [51.5886,4.7758],[51.5870,4.7778],[51.5848,4.7802],[51.5822,4.7828],
+  [51.5795,4.7855],[51.5768,4.7883],[51.5742,4.7910],[51.5715,4.7938],
+  [51.5688,4.7965],[51.5660,4.7992],[51.5632,4.8018],[51.5605,4.8046],
+  [51.5578,4.8074],[51.5550,4.8102],[51.5522,4.8130],[51.5495,4.8158],
+  [51.5468,4.8186],[51.5440,4.8215],[51.5412,4.8244],[51.5385,4.8274],
+  [51.5358,4.8305],[51.5330,4.8336],[51.5303,4.8368],[51.5275,4.8400],
+  [51.5248,4.8432],[51.5220,4.8465],[51.5192,4.8498],[51.5165,4.8530],
+  [51.5138,4.8564],[51.5110,4.8598],[51.5082,4.8632],[51.5055,4.8665],
+  [51.5028,4.8700],[51.5000,4.8735],[51.4972,4.8770],[51.4945,4.8806],
+  [51.4918,4.8842],[51.4890,4.8878],[51.4862,4.8915],[51.4835,4.8952],
+  [51.4808,4.8988],[51.4780,4.9022],[51.4752,4.9055],[51.4725,4.9086],
+  [51.4698,4.9115],[51.4672,4.9142],[51.4648,4.9168],[51.4625,4.9192],
+  [51.4605,4.9215],[51.4588,4.9238],[51.4575,4.9260],[51.4565,4.9280],
+  [51.4558,4.9298],[51.4555,4.9315],[51.4555,4.9332],[51.4558,4.9348],
+  // turnaround near Baarle
+  [51.4565,4.9362],[51.4575,4.9372],[51.4588,4.9378],[51.4602,4.9380],
+  [51.4618,4.9376],[51.4635,4.9368],[51.4652,4.9355],[51.4670,4.9338],
+  [51.4688,4.9318],[51.4706,4.9295],[51.4725,4.9270],[51.4744,4.9244],
+  [51.4762,4.9218],[51.4780,4.9190],[51.4798,4.9162],[51.4816,4.9132],
+  // sheltered section starts (~30km mark, index ~65)
+  [51.4835,4.9100],[51.4855,4.9068],[51.4878,4.9038],[51.4902,4.9010],
+  [51.4928,4.8985],[51.4955,4.8962],[51.4982,4.8940],[51.5010,4.8918],
+  [51.5038,4.8896],[51.5066,4.8874],[51.5094,4.8852],[51.5122,4.8830],
+  [51.5150,4.8808],[51.5178,4.8786],[51.5205,4.8764],[51.5232,4.8742],
+  [51.5258,4.8720],[51.5285,4.8698],[51.5312,4.8676],[51.5340,4.8652],
+  [51.5368,4.8628],[51.5396,4.8604],[51.5425,4.8580],[51.5455,4.8555],
+  [51.5485,4.8530],[51.5515,4.8504],[51.5545,4.8478],[51.5575,4.8450],
+  [51.5605,4.8422],[51.5632,4.8392],[51.5658,4.8360],[51.5682,4.8328],
+  [51.5705,4.8295],[51.5725,4.8260],[51.5745,4.8225],[51.5762,4.8188],
+  [51.5778,4.8150],[51.5792,4.8112],[51.5805,4.8072],[51.5818,4.8032],
+  [51.5830,4.7992],[51.5842,4.7952],[51.5852,4.7912],[51.5862,4.7872],
+  [51.5870,4.7832],[51.5878,4.7795],[51.5884,4.7770],[51.5886,4.7758],
+];
+
+const SHELTERED_START_IDX = 65;
+const TOTAL_KM = 53.8;
+
+// =============================================
+// STATE
+// =============================================
+let map, routeLayers = [], windParticles = [];
+let selectedDay = 0, selectedHour = new Date().getHours();
+let weatherCache = {};
+let windAnimId = null;
+let uiReady = false;
+
+const STORAGE_KEY = 'rbo_weather_v2';
+const STORAGE_TS_KEY = 'rbo_weather_ts';
+const REFRESH_HOUR_UTC = 4; // Elke dag om 04:00 UTC nieuwe data
+
+// =============================================
+// CACHE LAYER (localStorage)
+// =============================================
+function saveToCache(hourlyData) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(hourlyData));
+    localStorage.setItem(STORAGE_TS_KEY, String(Date.now()));
+  } catch (e) { /* quota exceeded or private mode — ignore */ }
+}
+
+function loadFromCache() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw);
+    if (data && data.time && data.time.length > 0) return data;
+  } catch (e) { /* corrupt data — ignore */ }
+  return null;
+}
+
+function getCacheTimestamp() {
+  try {
+    const ts = localStorage.getItem(STORAGE_TS_KEY);
+    return ts ? parseInt(ts, 10) : 0;
+  } catch (e) { return 0; }
+}
+
+/** Geeft de meest recente 04:00 UTC timestamp terug */
+function getLastRefreshBoundary() {
+  const now = new Date();
+  const today04 = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), REFRESH_HOUR_UTC, 0, 0
+  ));
+  // Als we nog vóór 04:00 UTC zitten, is de boundary gisteren 04:00
+  if (now < today04) today04.setUTCDate(today04.getUTCDate() - 1);
+  return today04.getTime();
+}
+
+function isCacheStale() {
+  const cacheTs = getCacheTimestamp();
+  if (cacheTs === 0) return true;
+  return cacheTs < getLastRefreshBoundary();
+}
+
+// =============================================
+// INIT — instant render, background refresh
+// =============================================
+function hideLoading() {
+  const el = document.getElementById('loadingOverlay');
+  if (el) el.classList.add('hidden');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  // 1. Bouw UI-skeleton
+  try {
+    buildDaySelector();
+    buildHourSelector();
+    initMap();
+  } catch (e) {
+    console.error('Map init error:', e);
+  }
+
+  // 2. Probeer direct vanuit cache te renderen (0 ms wachttijd)
+  const cached = loadFromCache();
+  if (cached) {
+    weatherCache = cached;
+    console.log('[RBO] Cache geladen (' + cached.time.length + ' uur), stale=' + isCacheStale());
+    requestAnimationFrame(() => {
+      setupWindCanvas();
+      update();
+      hideLoading();
+      uiReady = true;
+    });
+  }
+
+  // 3. Op de achtergrond verse data ophalen
+  fetchWeatherSilent().then(fresh => {
+    if (fresh) {
+      weatherCache = fresh;
+      saveToCache(fresh);
+      console.log('[RBO] Verse data geladen & gecached');
+      if (uiReady) {
+        // Silently swap — geen loader, geen flicker
+        update();
+      }
+    }
+    // Als er geen cache was EN geen verse data: toon fallback
+    if (!cached && !fresh) {
+      generateFallbackWeather();
+    }
+    if (!uiReady) {
+      requestAnimationFrame(() => {
+        setupWindCanvas();
+        update();
+        hideLoading();
+        uiReady = true;
+      });
+    }
+  });
+
+  // 4. Periodieke check: elke 5 minuten kijken of we voorbij 04:00 UTC zijn
+  setInterval(backgroundRefreshCheck, 5 * 60 * 1000);
+});
+
+// Failsafe: loader verdwijnt altijd na 3s (cache maakt dit snel genoeg)
+setTimeout(hideLoading, 3000);
+
+/** Achtergrond-check: als we voorbij een 04:00-grens zijn, herlaad data */
+async function backgroundRefreshCheck() {
+  if (isCacheStale()) {
+    console.log('[RBO] Cache is stale, achtergrond-refresh...');
+    const fresh = await fetchWeatherSilent();
+    if (fresh) {
+      weatherCache = fresh;
+      saveToCache(fresh);
+      update();
+    }
+  }
+}
+
+// =============================================
+// MAP
+// =============================================
+function initMap() {
+  map = L.map('map', {
+    center: [51.515, 4.880],
+    zoom: 11,
+    zoomControl: false,
+    attributionControl: false,
+  });
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    maxZoom: 18,
+  }).addTo(map);
+  L.control.zoom({ position: 'topright' }).addTo(map);
+
+  // Fit route
+  const bounds = L.latLngBounds(ROUTE.map(p => [p[0], p[1]]));
+  map.fitBounds(bounds.pad(0.08));
+
+  // Setup wind canvas
+  setupWindCanvas();
+}
+
+function drawRoute(windDir, windSpeed) {
+  routeLayers.forEach(l => map.removeLayer(l));
+  routeLayers = [];
+
+  for (let i = 0; i < ROUTE.length - 1; i++) {
+    const p1 = ROUTE[i], p2 = ROUTE[i + 1];
+    const segHeading = bearing(p1[0], p1[1], p2[0], p2[1]);
+    const angleDiff = angleDifference(windDir, segHeading);
+
+    // Tailwind: wind coming FROM behind = wind direction ~= segment heading
+    // angleDiff near 0 = tailwind, near 180 = headwind
+    const tailwindFactor = Math.cos(angleDiff * Math.PI / 180);
+
+    let color;
+    if (tailwindFactor > 0.3) color = '#22c55e';       // tailwind
+    else if (tailwindFactor > -0.3) color = '#eab308';  // crosswind
+    else color = '#ef4444';                               // headwind
+
+    const isSheltered = i >= SHELTERED_START_IDX;
+    const weight = isSheltered ? 3.5 : 4.5;
+    const opacity = isSheltered ? 0.55 : 0.9;
+
+    const line = L.polyline([[p1[0], p1[1]], [p2[0], p2[1]]], {
+      color: color,
+      weight: weight,
+      opacity: opacity,
+      lineCap: 'round',
+      lineJoin: 'round',
+    }).addTo(map);
+    routeLayers.push(line);
+  }
+
+  // Sheltered overlay (subtle)
+  const shelteredCoords = ROUTE.slice(SHELTERED_START_IDX).map(p => [p[0], p[1]]);
+  const shelteredLine = L.polyline(shelteredCoords, {
+    color: '#38bdf8',
+    weight: 1.5,
+    opacity: 0.25,
+    dashArray: '6 5',
+  }).addTo(map);
+  routeLayers.push(shelteredLine);
+
+  // Start marker
+  const startIcon = L.divIcon({
+    className: '',
+    html: `<div style="width:14px;height:14px;border-radius:50%;background:#06b6d4;border:2px solid #0c1220;box-shadow:0 0 8px #06b6d480;"></div>`,
+    iconSize: [14, 14],
+    iconAnchor: [7, 7],
+  });
+  const startMarker = L.marker(ROUTE[0], { icon: startIcon }).addTo(map);
+  routeLayers.push(startMarker);
+
+  // Baarle label
+  const baarleIcon = L.divIcon({
+    className: '',
+    html: `<div style="font-family:'Outfit',sans-serif;font-size:10px;color:#475569;white-space:nowrap;text-shadow:0 1px 4px #000;">Baarle-Nassau</div>`,
+    iconSize: [80, 16],
+    iconAnchor: [40, 8],
+  });
+  const baarleMarker = L.marker([51.453, 4.935], { icon: baarleIcon, interactive: false }).addTo(map);
+  routeLayers.push(baarleMarker);
+
+  // Breda label
+  const bredaIcon = L.divIcon({
+    className: '',
+    html: `<div style="font-family:'Outfit',sans-serif;font-size:11px;color:#64748b;white-space:nowrap;font-weight:600;text-shadow:0 1px 4px #000;">Breda</div>`,
+    iconSize: [40, 16],
+    iconAnchor: [20, 20],
+  });
+  const bredaMarker = L.marker([51.592, 4.776], { icon: bredaIcon, interactive: false }).addTo(map);
+  routeLayers.push(bredaMarker);
+}
+
+// =============================================
+// WIND PARTICLE ANIMATION (Windy-style)
+// =============================================
+function setupWindCanvas() {
+  const canvas = document.getElementById('windCanvas');
+  const mapEl = document.getElementById('map');
+  if (!canvas || !mapEl) return;
+
+  const w = mapEl.offsetWidth || mapEl.clientWidth || 700;
+  const h = mapEl.offsetHeight || mapEl.clientHeight || 420;
+  const dpr = window.devicePixelRatio || 1;
+
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  window.addEventListener('resize', () => {
+    const rw = mapEl.offsetWidth || mapEl.clientWidth || 700;
+    const rh = mapEl.offsetHeight || mapEl.clientHeight || 420;
+    canvas.width = rw * dpr;
+    canvas.height = rh * dpr;
+    canvas.style.width = rw + 'px';
+    canvas.style.height = rh + 'px';
+  });
+}
+
+function startWindAnimation(windDir, windSpeed) {
+  if (windAnimId) cancelAnimationFrame(windAnimId);
+
+  const canvas = document.getElementById('windCanvas');
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.width;
+  const h = canvas.height;
+
+  const rad = (windDir + 180) * Math.PI / 180; // direction wind blows TO
+  const vx = Math.sin(rad) * windSpeed * 0.35 * dpr;
+  const vy = -Math.cos(rad) * windSpeed * 0.35 * dpr;
+
+  const numParticles = Math.min(300, Math.floor(60 + windSpeed * 12));
+  const particles = [];
+
+  for (let i = 0; i < numParticles; i++) {
+    particles.push({
+      x: Math.random() * w,
+      y: Math.random() * h,
+      age: Math.random() * 80,
+      maxAge: 60 + Math.random() * 60,
+      speed: 0.6 + Math.random() * 0.8,
+    });
+  }
+
+  // Color based on speed
+  const speedColor = windSpeed < 5 ? [74, 222, 128]
+    : windSpeed < 10 ? [250, 204, 21]
+    : windSpeed < 15 ? [249, 115, 22]
+    : [239, 68, 68];
+
+  function animate() {
+    ctx.clearRect(0, 0, w, h);
+
+    for (const p of particles) {
+      p.x += vx * p.speed;
+      p.y += vy * p.speed;
+      p.age++;
+
+      if (p.age > p.maxAge || p.x < -20 || p.x > w + 20 || p.y < -20 || p.y > h + 20) {
+        // Reset particle
+        p.x = Math.random() * w - vx * 15;
+        p.y = Math.random() * h - vy * 15;
+        p.age = 0;
+        p.maxAge = 60 + Math.random() * 60;
+      }
+
+      const life = p.age / p.maxAge;
+      const alpha = life < 0.15 ? life / 0.15
+        : life > 0.7 ? (1 - life) / 0.3
+        : 1;
+      const a = Math.max(0, Math.min(0.45, alpha * 0.45));
+
+      const tailLen = Math.min(18, windSpeed * 1.2) * dpr * p.speed;
+      const tx = p.x - Math.sin(rad) * tailLen;
+      const ty = p.y + Math.cos(rad) * tailLen;
+
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(p.x, p.y);
+      ctx.strokeStyle = `rgba(${speedColor[0]},${speedColor[1]},${speedColor[2]},${a * 0.4})`;
+      ctx.lineWidth = 1 * dpr;
+      ctx.stroke();
+
+      // Arrow head
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 1.5 * dpr, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(${speedColor[0]},${speedColor[1]},${speedColor[2]},${a})`;
+      ctx.fill();
+    }
+
+    windAnimId = requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
+// =============================================
+// WEATHER API (Open-Meteo) — non-blocking fetch
+// =============================================
+async function fetchWeatherSilent() {
+  const lat = 51.52, lon = 4.88;
+  const params = [
+    'temperature_2m', 'apparent_temperature', 'relative_humidity_2m',
+    'precipitation', 'cloud_cover', 'wind_speed_10m',
+    'wind_direction_10m', 'wind_gusts_10m'
+  ].join(',');
+  const url = 'https://api.open-meteo.com/v1/forecast'
+    + '?latitude=' + lat + '&longitude=' + lon
+    + '&hourly=' + params
+    + '&forecast_days=7&timezone=Europe%2FAmsterdam&wind_speed_unit=ms';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
+
+  try {
+    const resp = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+    if (data && data.hourly && data.hourly.time && data.hourly.time.length > 0) {
+      return data.hourly;
+    }
+    throw new Error('Invalid response');
+  } catch (e) {
+    clearTimeout(timeout);
+    console.warn('[RBO] API fetch mislukt:', e.message);
+    return null;
+  }
+}
+
+function generateFallbackWeather() {
+  console.warn('[RBO] Fallback weerdata gegenereerd');
+  const hours = 7 * 24;
+  const time = [];
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  for (let i = 0; i < hours; i++) {
+    const d = new Date(now.getTime() + i * 3600000);
+    time.push(d.toISOString());
+  }
+  weatherCache = {
+    time: time,
+    temperature_2m: time.map(function(_, i) { return 8 + 5 * Math.sin((i % 24 - 6) * Math.PI / 12); }),
+    apparent_temperature: time.map(function(_, i) { return 6 + 4 * Math.sin((i % 24 - 6) * Math.PI / 12); }),
+    relative_humidity_2m: time.map(function() { return 65 + Math.random() * 20; }),
+    precipitation: time.map(function() { return 0; }),
+    cloud_cover: time.map(function() { return 40 + Math.random() * 30; }),
+    wind_speed_10m: time.map(function() { return 4 + Math.random() * 6; }),
+    wind_direction_10m: time.map(function() { return 200 + Math.random() * 40; }),
+    wind_gusts_10m: time.map(function() { return 8 + Math.random() * 8; }),
+  };
+}
+
+function getHourlyIndex(dayIdx, hour) {
+  return dayIdx * 24 + hour;
+}
+
+function getWeather(dayIdx, hour) {
+  const i = getHourlyIndex(dayIdx, hour);
+  const h = weatherCache;
+  if (!h || !h.time || i >= h.time.length) return null;
+  return {
+    temp: h.temperature_2m[i],
+    feelsLike: h.apparent_temperature[i],
+    humidity: h.relative_humidity_2m[i],
+    rain: h.precipitation[i],
+    clouds: h.cloud_cover[i],
+    windSpeed: h.wind_speed_10m[i],
+    windDir: h.wind_direction_10m[i],
+    windGust: h.wind_gusts_10m[i],
+  };
+}
+
+// =============================================
+// SELECTORS
+// =============================================
+const DAYS_NL = ['zo','ma','di','wo','do','vr','za'];
+const MONTHS_NL = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+
+function buildDaySelector() {
+  const el = document.getElementById('daySelector');
+  const now = new Date();
+  let html = '';
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(now); d.setDate(d.getDate() + i);
+    const label = i === 0 ? 'Vandaag' : `${DAYS_NL[d.getDay()]} ${d.getDate()} ${MONTHS_NL[d.getMonth()]}`;
+    html += `<button class="day-btn ${i === selectedDay ? 'active' : ''}" onclick="selectDay(${i})">${label}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function buildHourSelector() {
+  const el = document.getElementById('hourSelector');
+  let html = '';
+  for (let i = 0; i < 24; i++) {
+    const tick = i % 3 === 0 ? ' tick' : '';
+    const active = i === selectedHour ? ' active' : '';
+    html += `<button class="hour-btn${tick}${active}" onclick="selectHour(${i})">${String(i).padStart(2,'0')}</button>`;
+  }
+  el.innerHTML = html;
+}
+
+function selectDay(d) {
+  selectedDay = d;
+  buildDaySelector();
+  update();
+}
+
+function selectHour(h) {
+  selectedHour = h;
+  buildHourSelector();
+  update();
+}
+
+// =============================================
+// WIND SCORE CALCULATION
+// =============================================
+function calculateWindScore(windDir, windSpeed) {
+  // Calculate for each route segment
+  let totalScore = 0, totalWeight = 0;
+
+  for (let i = 0; i < ROUTE.length - 1; i++) {
+    const p1 = ROUTE[i], p2 = ROUTE[i + 1];
+    const segHeading = bearing(p1[0], p1[1], p2[0], p2[1]);
+    const isSheltered = i >= SHELTERED_START_IDX;
+
+    // Wind blows FROM windDir. Tailwind = wind blows in same direction as travel
+    const angleDiff = angleDifference(windDir, segHeading);
+    // angleDiff 0 = perfect tailwind, 180 = headwind
+    const tailwindComponent = Math.cos(angleDiff * Math.PI / 180);
+
+    // Score: 1 = full tailwind, 0 = full headwind
+    let segScore = (tailwindComponent + 1) / 2;
+
+    // Sheltered: wind effect reduced by 60%
+    if (isSheltered) {
+      segScore = 0.5 + (segScore - 0.5) * 0.4;
+    }
+
+    // Wind speed factor: strong headwind is worse than light headwind
+    const speedPenalty = windSpeed > 8 ? (windSpeed - 8) * 0.01 * (1 - tailwindComponent) : 0;
+    segScore = Math.max(0, segScore - speedPenalty * (isSheltered ? 0.3 : 1));
+
+    // Weight by segment distance (uniform here) with exposed sections weighted more
+    const weight = isSheltered ? 0.6 : 1;
+    totalScore += segScore * weight;
+    totalWeight += weight;
+  }
+
+  return Math.max(0, Math.min(100, Math.round((totalScore / totalWeight) * 100)));
+}
+
+// =============================================
+// CLOTHING ADVICE
+// =============================================
+function getClothingAdvice(temp, feelsLike, windSpeed, rain) {
+  const effective = feelsLike != null ? feelsLike : temp;
+
+  if (effective >= 20) return {
+    cat: 'KORT / KORT', color: '#22c55e', icon: '☀️',
+    desc: 'Korte broek en kort fietsshirt. Gebruik lichte kleuren en vergeet je zonnebril niet. Een dun ondershirt voor zweetafvoer maakt het compleet.',
+    tags: ['Kort fietsshirt', 'Korte fietsbroek', 'Korte handschoenen', 'Zonnebril'],
+  };
+  if (effective >= 16) return {
+    cat: 'KORT / KORT', color: '#84cc16', icon: '🌤️',
+    desc: 'Korte broek en kort shirt volstaan. Neem armstukken mee als het later afkoelt. Een windstopper in je achterzak is verstandig bij wisselend weer.',
+    tags: ['Kort fietsshirt', 'Korte fietsbroek', 'Armstukken (mee)', 'Windstopper (mee)'],
+  };
+  if (effective >= 12) return {
+    cat: 'KORT / LANG', color: '#eab308', icon: '🌥️',
+    desc: 'Korte broek met beenstukken of kniestukken. Bovenlijf: shirt met armstukken of een dun jack met lange mouwen. Doe een windstopper aan bij stevige wind.',
+    tags: ['Shirt + armstukken', 'Korte broek + beenstukken', 'Windstopper', 'Dunne handschoenen'],
+  };
+  if (effective >= 8) return {
+    cat: 'LANG / LANG', color: '#f97316', icon: '🌧️',
+    desc: 'Lange broek en fietsjack met lange mouwen. Een dun thermoshirt als onderlaag houdt je romp warm. Overschoenen en handschoenen maken het verschil.',
+    tags: ['Thermoshirt', 'Fietsjack', 'Lange fietsbroek', 'Handschoenen', 'Overschoenen'],
+  };
+  if (effective >= 3) return {
+    cat: 'LANG / LANG', color: '#ef4444', icon: '❄️',
+    desc: 'Winteruitrusting nodig. Thermogevoerde lange broek, winddicht winterjack, helmmuts, warme handschoenen en overschoenen. Werk in laagjes.',
+    tags: ['Thermoshirt lang', 'Winterjack', 'Thermo bibtights', 'Winterhandschoenen', 'Overschoenen', 'Helmmuts'],
+  };
+  return {
+    cat: 'LANG / LANG', color: '#ef4444', icon: '🥶',
+    desc: 'Extreem koud. Overweeg of fietsen verantwoord is. Volledige winteruitrusting met meerdere lagen, winddicht van top tot teen. Bescherm alle uiteinden.',
+    tags: ['Dubbele laag boven', 'Thermo bibtights', 'Winterjack winddicht', 'Skihandschoenen', 'Thermo overschoenen', 'Helmmuts', 'Nekwarmer'],
+  };
+}
+
+// =============================================
+// CYCLIST SVG
+// =============================================
+function getCyclistSVG(clothingColor) {
+  return `<svg viewBox="0 0 240 180" width="200" height="150" xmlns="http://www.w3.org/2000/svg">
+  <style>
+    @keyframes pedal { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    @keyframes bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+    .pedaling { animation: pedal 1.2s linear infinite; transform-origin: 108px 132px; }
+    .body-bob { animation: bob 0.6s ease-in-out infinite; }
+  </style>
+  <!-- Rear wheel -->
+  <circle cx="62" cy="132" r="32" fill="none" stroke="#64748b" stroke-width="2.2"/>
+  <circle cx="62" cy="132" r="30" fill="none" stroke="#475569" stroke-width="0.3"/>
+  <circle cx="62" cy="132" r="4" fill="#94a3b8"/>
+  ${[0,30,60,90,120,150,180,210,240,270,300,330].map(a =>
+    `<line x1="62" y1="132" x2="${62+28*Math.cos(a*Math.PI/180)}" y2="${132+28*Math.sin(a*Math.PI/180)}" stroke="#334155" stroke-width="0.6"/>`
+  ).join('')}
+  <!-- Front wheel -->
+  <circle cx="172" cy="132" r="32" fill="none" stroke="#64748b" stroke-width="2.2"/>
+  <circle cx="172" cy="132" r="30" fill="none" stroke="#475569" stroke-width="0.3"/>
+  <circle cx="172" cy="132" r="4" fill="#94a3b8"/>
+  ${[0,30,60,90,120,150,180,210,240,270,300,330].map(a =>
+    `<line x1="172" y1="132" x2="${172+28*Math.cos(a*Math.PI/180)}" y2="${132+28*Math.sin(a*Math.PI/180)}" stroke="#334155" stroke-width="0.6"/>`
+  ).join('')}
+  <!-- Frame -->
+  <g stroke="#475569" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="62" y1="132" x2="108" y2="88"/>
+    <line x1="108" y1="88" x2="148" y2="88"/>
+    <line x1="148" y1="88" x2="172" y2="132"/>
+    <line x1="62" y1="132" x2="120" y2="132"/>
+    <line x1="120" y1="132" x2="148" y2="88"/>
+    <line x1="108" y1="88" x2="102" y2="68"/>
+    <line x1="148" y1="88" x2="158" y2="72"/>
+  </g>
+  <!-- Seat post + saddle -->
+  <ellipse cx="101" cy="65" rx="14" ry="4.5" fill="#334155" rx="14"/>
+  <!-- Handlebars -->
+  <path d="M155 70 Q162 62 168 66" fill="none" stroke="#475569" stroke-width="3" stroke-linecap="round"/>
+  <!-- Pedal crank -->
+  <g class="pedaling">
+    <line x1="108" y1="132" x2="108" y2="148" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="108" y1="132" x2="108" y2="116" stroke="#64748b" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="103" y="146" width="10" height="3" rx="1" fill="#94a3b8"/>
+    <rect x="103" y="113" width="10" height="3" rx="1" fill="#94a3b8"/>
+  </g>
+  <!-- Rider -->
+  <g class="body-bob">
+    <!-- Legs -->
+    <g class="pedaling">
+      <path d="M108 148 Q95 138 92 120 Q90 110 100 95" fill="none" stroke="#d4a574" stroke-width="4" stroke-linecap="round"/>
+      <path d="M108 116 Q118 125 120 135 Q122 142 115 95" fill="none" stroke="#d4a574" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <!-- Torso (jersey) -->
+    <path d="M103 68 Q115 60 140 55 Q150 53 158 58" fill="none" stroke="${clothingColor}" stroke-width="8" stroke-linecap="round"/>
+    <!-- Jersey detail -->
+    <path d="M115 63 Q130 57 145 55" fill="none" stroke="${clothingColor}" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+    <!-- Arms -->
+    <path d="M145 56 Q155 58 162 64" fill="none" stroke="#d4a574" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M108 66 Q112 68 118 64" fill="none" stroke="#d4a574" stroke-width="3" stroke-linecap="round"/>
+    <!-- Neck -->
+    <line x1="148" y1="54" x2="152" y2="46" stroke="#d4a574" stroke-width="3.5" stroke-linecap="round"/>
+    <!-- Head -->
+    <ellipse cx="155" cy="42" rx="9" ry="8" fill="#d4a574"/>
+    <!-- Helmet -->
+    <path d="M144 38 Q148 28 162 30 Q170 32 168 38 Q165 42 155 44 Q147 43 144 38Z" fill="#1e293b"/>
+    <!-- Helmet vents -->
+    <line x1="150" y1="32" x2="152" y2="36" stroke="#334155" stroke-width="0.8"/>
+    <line x1="155" y1="31" x2="157" y2="35" stroke="#334155" stroke-width="0.8"/>
+    <line x1="160" y1="32" x2="161" y2="36" stroke="#334155" stroke-width="0.8"/>
+    <!-- Sunglasses -->
+    <path d="M149 41 Q155 39 163 41" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round"/>
+    <!-- Shoes -->
+    <g class="pedaling">
+      <ellipse cx="108" cy="150" rx="6" ry="2.5" fill="#1e293b"/>
+      <ellipse cx="108" cy="114" rx="6" ry="2.5" fill="#1e293b"/>
+    </g>
+  </g>
+</svg>`;
+}
+
+// =============================================
+// UPDATE
+// =============================================
+function updateDataStatus() {
+  const el = document.getElementById('dataStatus');
+  if (!el) return;
+  const ts = getCacheTimestamp();
+  if (ts > 0) {
+    const d = new Date(ts);
+    const pad = function(n) { return String(n).padStart(2, '0'); };
+    const timeStr = pad(d.getHours()) + ':' + pad(d.getMinutes());
+    const stale = isCacheStale();
+    el.textContent = 'Data geladen: ' + timeStr + (stale ? ' (verouderd, wordt ververst)' : '');
+    el.style.color = stale ? '#92400e' : '#334155';
+  }
+}
+
+function update() {
+  const w = getWeather(selectedDay, selectedHour);
+  if (!w) return;
+
+  // Route coloring
+  drawRoute(w.windDir, w.windSpeed);
+
+  // Wind animation
+  startWindAnimation(w.windDir, w.windSpeed);
+
+  // Wind score
+  const score = calculateWindScore(w.windDir, w.windSpeed);
+  const scoreEl = document.getElementById('windScore');
+  const scoreColor = score >= 70 ? 'var(--green)' : score >= 40 ? 'var(--yellow)' : 'var(--red)';
+  const scoreLabel = score >= 80 ? 'Uitstekend' : score >= 60 ? 'Goed' : score >= 40 ? 'Matig' : score >= 20 ? 'Ongunstig' : 'Slecht';
+  scoreEl.textContent = score + '%';
+  scoreEl.style.color = scoreColor;
+  document.getElementById('windScoreLabel').textContent = scoreLabel;
+  document.getElementById('windScoreLabel').style.color = scoreColor;
+
+  // Weather
+  document.getElementById('tempDisplay').textContent = Math.round(w.temp * 10) / 10 + '°';
+  document.getElementById('feelsLike').textContent = 'Voelt als ' + Math.round(w.feelsLike * 10) / 10 + '°';
+  document.getElementById('weatherDetail').innerHTML =
+    `<div class="stat-detail-row">☁️ ${w.clouds}% bewolking</div>`
+    + `<div class="stat-detail-row">💧 ${w.humidity}% luchtvochtigheid</div>`
+    + (w.rain > 0 ? `<div class="stat-detail-row">🌧️ ${w.rain} mm neerslag</div>` : '');
+
+  // Wind
+  document.getElementById('windSpeed').textContent = Math.round(w.windSpeed * 10) / 10;
+  document.getElementById('windGust').textContent = 'Windstoten: ' + Math.round(w.windGust * 10) / 10 + ' m/s';
+
+  const dirs = ['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'];
+  document.getElementById('windDirLabel').textContent = dirs[Math.round(w.windDir / 22.5) % 16];
+  document.getElementById('windDirDeg').textContent = Math.round(w.windDir) + '°';
+  document.getElementById('compassNeedle').setAttribute('transform', `rotate(${w.windDir}, 16, 16)`);
+
+  // Clothing
+  const c = getClothingAdvice(w.temp, w.feelsLike, w.windSpeed, w.rain);
+  document.getElementById('clothingCategory').textContent = c.icon + ' ' + c.cat;
+  document.getElementById('clothingCategory').style.color = c.color;
+  document.getElementById('clothingDesc').textContent = c.desc;
+  document.getElementById('clothingTags').innerHTML = c.tags.map(t =>
+    `<span class="clothing-tag">${t}</span>`
+  ).join('');
+  document.getElementById('cyclistWrap').innerHTML = getCyclistSVG(c.color);
+
+  // Data freshness indicator
+  updateDataStatus();
+}
+
+// =============================================
+// GEO UTILITIES
+// =============================================
+function bearing(lat1, lon1, lat2, lon2) {
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const y = Math.sin(dLon) * Math.cos(lat2 * Math.PI / 180);
+  const x = Math.cos(lat1 * Math.PI / 180) * Math.sin(lat2 * Math.PI / 180)
+    - Math.sin(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.cos(dLon);
+  return ((Math.atan2(y, x) * 180 / Math.PI) + 360) % 360;
+}
+
+function angleDifference(dir1, dir2) {
+  let diff = Math.abs(dir1 - dir2) % 360;
+  return diff > 180 ? 360 - diff : diff;
+}
+</script>
+</body>
+</html>

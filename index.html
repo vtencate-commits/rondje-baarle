@@ -95,6 +95,15 @@ body{background:var(--body-bg);font-family:'Outfit',-apple-system,sans-serif;col
 .info-popup-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px}
 .footer{text-align:center;padding:20px 0 28px;font-size:10px;color:var(--text-muted);font-family:'JetBrains Mono',monospace}
 .footer a{color:var(--cyan)}
+.route-dir-toggle{
+  position:absolute;bottom:12px;left:12px;z-index:800;
+  padding:6px 14px;border-radius:8px;border:1px solid var(--border);
+  background:var(--bg-card);backdrop-filter:var(--card-blur);
+  color:var(--text);font-size:12px;font-weight:600;cursor:pointer;
+  font-family:'Outfit',sans-serif;transition:all 0.2s;pointer-events:auto;
+}
+.route-dir-toggle:hover{border-color:var(--cyan);background:var(--cyan-dim)}
+.route-dir-toggle.reversed{border-color:var(--orange);color:var(--orange)}
 .loading-overlay{position:fixed;inset:0;z-index:9999;background:var(--bg-deep);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity 0.3s}
 .loading-overlay.hidden{opacity:0;pointer-events:none}
 .loading-spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin 0.8s linear infinite}
@@ -124,35 +133,53 @@ body{background:var(--body-bg);font-family:'Outfit',-apple-system,sans-serif;col
   <div class="map-wrap anim a2">
     <div id="map"></div><canvas id="windCanvas"></canvas>
     <div class="map-overlay wind-bar"><span>m/s</span><div class="wind-gradient-bar"></div><span>0 &mdash; 20+</span></div>
+    <button class="route-dir-toggle" id="routeDirToggle" onclick="toggleRouteDir()" title="Wissel rijrichting">&#x27F2; Standaard</button>
     <div class="map-overlay map-legend">
       <div class="map-legend-row"><div class="legend-line" style="background:var(--green)"></div><span>Meewind</span></div>
       <div class="map-legend-row"><div class="legend-line" style="background:var(--yellow)"></div><span>Zijwind</span></div>
       <div class="map-legend-row"><div class="legend-line" style="background:var(--red)"></div><span>Tegenwind</span></div>
-      <div class="map-legend-row" style="margin-top:2px;opacity:0.7"><div class="legend-line" style="background:#38bdf8;opacity:0.5"></div><span>Beschut (30-56 km)</span></div>
     </div>
   </div>
-  <!-- GOLDEN HOUR -->
+  <!-- GOUDEN VENSTER (4u blok) -->
   <div class="golden-card anim a3" id="goldenCard">
-    <div class="golden-title">&#9733; Het Gouden Uur <button class="info-btn" onclick="toggleInfo('goldenInfo')">i</button></div>
-    <div class="info-popup" id="goldenInfo"><button class="info-popup-close" onclick="toggleInfo('goldenInfo')">&times;</button>Het Gouden Uur analyseert alle 168 uren van de komende 7 dagen en vindt het ideale moment om te fietsen. De score combineert windscore, temperatuur (12-20&deg;C ideaal), zon, droogte en daglicht.</div>
+    <div class="golden-title">&#9733; Het Gouden Venster <button class="info-btn" onclick="toggleInfo('goldenInfo')">i</button></div>
+    <div class="info-popup" id="goldenInfo"><button class="info-popup-close" onclick="toggleInfo('goldenInfo')">&times;</button>Het Gouden Venster zoekt het beste aaneengesloten blok van vier uur in de komende zeven dagen om te fietsen. De score weegt windcondities (45%), temperatuur (25%), zon (20%) en droogte (10%) mee.</div>
     <div class="golden-moment" id="goldenMoment">&mdash;</div>
     <div class="golden-details" id="goldenDetails"></div>
   </div>
-  <!-- STATS -->
-  <div class="stats-grid anim a3">
+  <!-- WINDCONDITIES + RIJRICHTING -->
+  <div class="stats-grid anim a3" style="grid-template-columns:1fr 1fr">
     <div class="stat-card" style="text-align:center">
-      <div class="stat-label">Ideale Windscore <button class="info-btn" onclick="toggleInfo('windInfo')">i</button></div>
-      <div class="info-popup" id="windInfo"><button class="info-popup-close" onclick="toggleInfo('windInfo')">&times;</button>De Ideale Windscore berekent per routesegment hoeveel mee- of tegenwind je hebt. 100% = perfecte meewind op de hele route, 0% = volle tegenwind. Het beschutte deel (30-56 km) weegt minder mee.</div>
-      <div class="stat-big" id="windScore">&mdash;</div><div class="stat-sub" id="windScoreLabel"></div>
+      <div class="stat-label">Windcondities <button class="info-btn" onclick="toggleInfo('windInfo')">i</button></div>
+      <div class="info-popup" id="windInfo"><button class="info-popup-close" onclick="toggleInfo('windInfo')">&times;</button>De windcondities worden ingedeeld in vier categorie&euml;n: Ideaal (overwegend meewind), Gunstig (beperkte tegenwind), Matig (stevige wind of veel zijwind) en Ongunstig (harde tegenwind). Het beschutte deel van de route weegt minder zwaar mee.</div>
+      <div class="stat-big" id="windScore" style="font-size:28px">&mdash;</div>
+      <div class="stat-sub" id="windScoreLabel"></div>
     </div>
+    <div class="stat-card" style="text-align:center">
+      <div class="stat-label">Rijrichting <button class="info-btn" onclick="toggleInfo('dirInfo')">i</button></div>
+      <div class="info-popup" id="dirInfo"><button class="info-popup-close" onclick="toggleInfo('dirInfo')">&times;</button>Het rondje wordt standaard tegen de klok in gereden. Alleen als andersom fietsen een duidelijk betere windscore oplevert wordt dat geadviseerd. Bij gelijke scores: rijd de standaardrichting.</div>
+      <div class="stat-big" id="dirAdvice" style="font-size:20px">&mdash;</div>
+      <div class="stat-sub" id="dirAdviceDetail"></div>
+    </div>
+  </div>
+  <!-- NEERSLAG 2 UUR -->
+  <div class="stat-card anim a3" style="margin-top:10px">
+    <div class="stat-label">Neerslag tijdens de rit <button class="info-btn" onclick="toggleInfo('rainInfo')">i</button></div>
+    <div class="info-popup" id="rainInfo"><button class="info-popup-close" onclick="toggleInfo('rainInfo')">&times;</button>Verwachte neerslag per uur vanaf het geselecteerde vertrektijdstip, voor de duur van het rondje (circa twee uur). Droog = 0 mm, motregen &lt; 0,5 mm, lichte regen 0,5&ndash;2 mm, matige regen 2&ndash;5 mm, zware regen &gt; 5 mm.</div>
+    <div id="rainForecast" style="font-size:16px;font-weight:700;margin-top:4px">&mdash;</div>
+    <div id="rainBars" style="display:flex;gap:6px;margin-top:8px;align-items:flex-end;height:40px"></div>
+    <div id="rainDetail" style="font-size:11px;color:var(--text-dim);margin-top:6px"></div>
+  </div>
+  <!-- WEER + WIND DETAILS -->
+  <div class="stats-grid anim a3" style="grid-template-columns:1fr 1fr;margin-top:10px">
     <div class="stat-card">
       <div class="stat-label">Weer <button class="info-btn" onclick="toggleInfo('weatherInfo')">i</button></div>
-      <div class="info-popup" id="weatherInfo"><button class="info-popup-close" onclick="toggleInfo('weatherInfo')">&times;</button>Actuele temperatuur, gevoelstemperatuur (windchill), bewolking, luchtvochtigheid en neerslag voor het geselecteerde moment. Data via Open-Meteo.</div>
+      <div class="info-popup" id="weatherInfo"><button class="info-popup-close" onclick="toggleInfo('weatherInfo')">&times;</button>Temperatuur, gevoelstemperatuur, bewolking, luchtvochtigheid en neerslag voor het geselecteerde moment.</div>
       <div class="stat-big" id="tempDisplay">&mdash;</div><div class="stat-sub" id="feelsLike"></div><div class="stat-detail" id="weatherDetail"></div>
     </div>
     <div class="stat-card">
       <div class="stat-label">Wind <button class="info-btn" onclick="toggleInfo('windDetailInfo')">i</button></div>
-      <div class="info-popup" id="windDetailInfo"><button class="info-popup-close" onclick="toggleInfo('windDetailInfo')">&times;</button>Windsnelheid en windstoten in m/s, plus de windrichting weergegeven op het kompas. De pijltjes op de kaart laten zien hoe de wind over de route waait.</div>
+      <div class="info-popup" id="windDetailInfo"><button class="info-popup-close" onclick="toggleInfo('windDetailInfo')">&times;</button>Windsnelheid, windstoten en windrichting voor het geselecteerde moment.</div>
       <div style="display:flex;align-items:baseline;gap:4px"><div class="stat-big" id="windSpeed">&mdash;</div><span style="font-size:13px;color:var(--text-dim)">m/s</span></div><div class="stat-sub" id="windGust"></div>
       <div class="compass-row"><svg viewBox="0 0 32 32" width="30" height="30"><circle cx="16" cy="16" r="14" fill="none" stroke="var(--border-light)" stroke-width="1"/><text x="16" y="6.5" text-anchor="middle" fill="var(--text-muted)" font-size="5" font-family="sans-serif">N</text><g id="compassNeedle"><line x1="16" y1="6" x2="16" y2="26" stroke="var(--cyan)" stroke-width="2" stroke-linecap="round"/><polygon points="16,5 13,11 19,11" fill="var(--cyan)"/></g></svg><div><div class="compass-label" id="windDirLabel">&mdash;</div><div class="compass-deg" id="windDirDeg"></div></div></div>
     </div>
@@ -178,7 +205,7 @@ body{background:var(--body-bg);font-family:'Outfit',-apple-system,sans-serif;col
 <script>
 var ROUTE_COORDS=[[51.578850,4.792890],[51.578717,4.791887],[51.578880,4.789670],[51.579680,4.788400],[51.580385,4.785945],[51.580510,4.784890],[51.579520,4.782600],[51.578710,4.780600],[51.578690,4.778980],[51.578800,4.778500],[51.578090,4.777360],[51.577170,4.776890],[51.575450,4.776870],[51.573760,4.777270],[51.573290,4.777030],[51.573000,4.777110],[51.572750,4.777460],[51.571720,4.777410],[51.570815,4.777065],[51.569900,4.776630],[51.568680,4.776700],[51.567900,4.776650],[51.566890,4.776120],[51.565930,4.774380],[51.564440,4.771790],[51.564385,4.769190],[51.564375,4.766850],[51.564140,4.763860],[51.563550,4.761155],[51.562570,4.758850],[51.561890,4.757990],[51.560005,4.758470],[51.558255,4.758520],[51.555913,4.757547],[51.554020,4.756420],[51.553540,4.753840],[51.552880,4.750210],[51.552730,4.750070],[51.550490,4.751110],[51.549860,4.750640],[51.548480,4.749740],[51.547640,4.747970],[51.546295,4.746575],[51.544870,4.746080],[51.543210,4.746010],[51.541340,4.745980],[51.539940,4.745840],[51.538120,4.745490],[51.537570,4.745350],[51.536337,4.745580],[51.534740,4.745980],[51.534000,4.745620],[51.533530,4.744820],[51.533147,4.742410],[51.532770,4.740510],[51.532085,4.739465],[51.530950,4.737860],[51.530595,4.736555],[51.529880,4.734830],[51.528635,4.733770],[51.526686,4.732864],[51.524274,4.731946],[51.522730,4.731090],[51.521350,4.729295],[51.519615,4.726965],[51.518190,4.724950],[51.516740,4.723350],[51.515970,4.721760],[51.515000,4.720000],[51.513420,4.718385],[51.511460,4.716720],[51.511130,4.716530],[51.510510,4.717130],[51.509250,4.718880],[51.507050,4.720665],[51.505300,4.722030],[51.504650,4.722810],[51.503850,4.724910],[51.503790,4.726070],[51.504840,4.728370],[51.505620,4.730120],[51.505740,4.731430],[51.504630,4.733090],[51.502890,4.734450],[51.502500,4.735140],[51.502630,4.735600],[51.503970,4.736860],[51.505030,4.737690],[51.505650,4.737940],[51.505510,4.740558],[51.505270,4.744230],[51.504990,4.748210],[51.505255,4.751280],[51.505930,4.753260],[51.504860,4.755760],[51.503970,4.758000],[51.504658,4.761564],[51.505372,4.765476],[51.505750,4.768130],[51.505650,4.769660],[51.505340,4.770850],[51.505130,4.774080],[51.504627,4.777110],[51.504480,4.778830],[51.505230,4.781440],[51.505430,4.785230],[51.505970,4.786200],[51.506200,4.786770],[51.505970,4.789530],[51.505700,4.792700],[51.504490,4.793100],[51.503080,4.794960],[51.501740,4.796365],[51.501130,4.797940],[51.501290,4.800690],[51.501494,4.804152],[51.501626,4.807908],[51.501620,4.810440],[51.501230,4.812610],[51.501260,4.813110],[51.501550,4.813580],[51.502247,4.815610],[51.502600,4.817180],[51.502167,4.821209],[51.501734,4.825237],[51.501190,4.827350],[51.500085,4.830125],[51.498900,4.833080],[51.498300,4.834530],[51.497310,4.838150],[51.496238,4.841510],[51.495235,4.844080],[51.494200,4.845710],[51.493010,4.847890],[51.491663,4.850443],[51.490490,4.852780],[51.489080,4.855540],[51.488237,4.857830],[51.487407,4.860650],[51.486990,4.862030],[51.486240,4.864670],[51.485200,4.866110],[51.483530,4.868030],[51.481615,4.869945],[51.479740,4.871655],[51.478232,4.872755],[51.475837,4.874420],[51.473470,4.876045],[51.471937,4.877767],[51.470327,4.880650],[51.468653,4.883690],[51.467013,4.886630],[51.465373,4.889570],[51.463767,4.892473],[51.462157,4.895402],[51.460409,4.898528],[51.458661,4.901653],[51.456913,4.904778],[51.455200,4.907740],[51.454490,4.909120],[51.453540,4.910840],[51.451830,4.913070],[51.450730,4.914490],[51.449380,4.916320],[51.449100,4.916860],[51.449660,4.918880],[51.450220,4.921690],[51.449795,4.923270],[51.449340,4.924540],[51.449730,4.926270],[51.450600,4.927090],[51.452240,4.927920],[51.453870,4.929080],[51.455460,4.930650],[51.457110,4.932660],[51.458570,4.934520],[51.460680,4.937120],[51.462790,4.939720],[51.464900,4.942320],[51.467023,4.944966],[51.469147,4.947613],[51.471270,4.950260],[51.472090,4.951260],[51.472430,4.951430],[51.472680,4.951350],[51.472910,4.951640],[51.473720,4.949770],[51.474600,4.946390],[51.475290,4.943060],[51.476220,4.939640],[51.476010,4.937760],[51.476210,4.936030],[51.476420,4.933460],[51.477120,4.931570],[51.477870,4.930460],[51.476800,4.926540],[51.475810,4.923310],[51.475550,4.921890],[51.474790,4.919140],[51.474930,4.917280],[51.475261,4.913469],[51.475775,4.909505],[51.476289,4.905541],[51.476540,4.904120],[51.479090,4.905065],[51.481070,4.905760],[51.482070,4.907030],[51.483795,4.909515],[51.485520,4.912000],[51.487283,4.909234],[51.489047,4.906467],[51.490810,4.903700],[51.491913,4.901880],[51.493190,4.899870],[51.493400,4.899930],[51.494330,4.901585],[51.495160,4.902500],[51.495510,4.902090],[51.495790,4.902160],[51.496540,4.902150],[51.497320,4.901990],[51.498880,4.901110],[51.500310,4.900050],[51.500707,4.901290],[51.501230,4.903710],[51.501520,4.907240],[51.501870,4.909070],[51.501970,4.909100],[51.503120,4.907160],[51.504665,4.904470],[51.506210,4.901780],[51.507880,4.900457],[51.510145,4.898787],[51.512047,4.896517],[51.513190,4.894800],[51.513480,4.894520],[51.514750,4.892438],[51.516550,4.889720],[51.518420,4.886920],[51.520290,4.884120],[51.521910,4.883485],[51.523057,4.885580],[51.524460,4.887950],[51.525985,4.890603],[51.527740,4.893643],[51.529130,4.895370],[51.529990,4.895390],[51.530200,4.894560],[51.530400,4.891950],[51.530210,4.889720],[51.530230,4.887960],[51.530290,4.886290],[51.530150,4.883770],[51.530250,4.881380],[51.530530,4.878750],[51.530530,4.877390],[51.531514,4.874210],[51.532450,4.871870],[51.534700,4.870290],[51.534790,4.869870],[51.535040,4.866810],[51.535190,4.864880],[51.534960,4.863240],[51.536363,4.860488],[51.537710,4.858404],[51.539810,4.855836],[51.540750,4.854550],[51.541970,4.851120],[51.542130,4.850660],[51.543165,4.847735],[51.544320,4.844460],[51.545553,4.840967],[51.546735,4.837670],[51.547936,4.834309],[51.549234,4.830632],[51.550280,4.827630],[51.550345,4.826465],[51.550383,4.822743],[51.550418,4.818488],[51.549940,4.817120],[51.550040,4.817490],[51.550030,4.817110],[51.550440,4.816700],[51.550660,4.815970],[51.552430,4.813370],[51.554300,4.810525],[51.556170,4.807680],[51.557380,4.805920],[51.556435,4.802615],[51.557390,4.800940],[51.558920,4.800310],[51.559560,4.800420],[51.560360,4.801750],[51.560910,4.800810],[51.561270,4.800130],[51.563470,4.798140],[51.563960,4.798840],[51.564290,4.799930],[51.566070,4.800065],[51.566890,4.799880],[51.567110,4.798990],[51.568080,4.799340],[51.568420,4.799590],[51.569450,4.801060],[51.570867,4.803123],[51.572680,4.805720],[51.573730,4.803645],[51.574610,4.801890],[51.576053,4.799630],[51.576990,4.798300],[51.578570,4.797490],[51.578670,4.795000],[51.578800,4.792900],[51.579050,4.792850]];
 var SHELTERED_FRAC=0.56,WEATHER_KEY='rbo_weather_v4',WEATHER_TS='rbo_weather_ts_v4',THEME_KEY='rbo_theme',REFRESH_H=4;
-var map,routeCoords=[],routeLayers=[],windAnimId=null,selectedDay=0,selectedHour=Math.max(4,Math.min(20,new Date().getHours())),weatherCache={},uiReady=false;
+var map,routeCoords=[],routeLayers=[],windAnimId=null,selectedDay=0,selectedHour=Math.max(4,Math.min(20,new Date().getHours())),weatherCache={},uiReady=false,showReversed=false;
 var DAYS_NL=['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
 var DAYS_S=['zo','ma','di','wo','do','vr','za'];
 var MONTHS_NL=['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
@@ -221,25 +248,36 @@ function initMap(){
   if(routeCoords.length>0)map.fitBounds(L.latLngBounds(routeCoords.map(function(p){return[p[0],p[1]]})).pad(0.06));
 }
 
+/* TOGGLE ROUTE DIRECTION */
+function toggleRouteDir(){
+  showReversed=!showReversed;
+  var btn=document.getElementById('routeDirToggle');
+  if(showReversed){btn.textContent='\u27F3 Andersom';btn.classList.add('reversed');}
+  else{btn.textContent='\u27F2 Standaard';btn.classList.remove('reversed');}
+  drawRoute();
+}
+
 /* DRAW ROUTE */
 function drawRoute(){
   routeLayers.forEach(function(l){map.removeLayer(l)});routeLayers=[];
   if(routeCoords.length===0)return;
+  var activeRoute=showReversed?routeCoords.slice().reverse():routeCoords;
   var w=getWeather(selectedDay,selectedHour);var wd=w?w.windDir:220;
-  var si=Math.floor(routeCoords.length*SHELTERED_FRAC);
-  var step=Math.max(1,Math.floor(routeCoords.length/120));
-  for(var i=0;i<routeCoords.length-step;i+=step){
-    var end=Math.min(i+step+1,routeCoords.length);var seg=routeCoords.slice(i,end);
-    var p1=routeCoords[i],p2=routeCoords[Math.min(i+step,routeCoords.length-1)];
+  var step=Math.max(1,Math.floor(activeRoute.length/120));
+  for(var i=0;i<activeRoute.length-step;i+=step){
+    var end=Math.min(i+step+1,activeRoute.length);var seg=activeRoute.slice(i,end);
+    var p1=activeRoute[i],p2=activeRoute[Math.min(i+step,activeRoute.length-1)];
     var h=bearing(p1[0],p1[1],p2[0],p2[1]);var ad=angleDiff(wd,h);var tw=Math.cos(ad*Math.PI/180);
-    var col=tw<-0.3?'#22c55e':tw<0.3?'#eab308':'#ef4444';var sh=i>=si;
+    var col=tw<-0.3?'#22c55e':tw<0.3?'#eab308':'#ef4444';
+    var frac=i/activeRoute.length;
+    var sh=showReversed?(frac<(1-SHELTERED_FRAC)):(frac>=SHELTERED_FRAC);
     routeLayers.push(L.polyline(seg,{color:col,weight:sh?3:4.5,opacity:sh?0.5:0.85,lineCap:'round',lineJoin:'round'}).addTo(map));
   }
-  routeLayers.push(L.marker(routeCoords[0],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div style="width:14px;height:14px;border-radius:50%;background:var(--cyan);border:2px solid var(--bg-deep);box-shadow:0 0 8px rgba(6,182,212,0.5)"></div>'})}).addTo(map));
+  routeLayers.push(L.marker(activeRoute[0],{icon:L.divIcon({className:'',iconSize:[14,14],iconAnchor:[7,7],html:'<div style="width:14px;height:14px;border-radius:50%;background:var(--cyan);border:2px solid var(--bg-deep);box-shadow:0 0 8px rgba(6,182,212,0.5)"></div>'})}).addTo(map));
   var ls='font-family:Outfit,sans-serif;color:var(--text-muted);font-weight:600;text-shadow:0 1px 4px rgba(0,0,0,0.4)';
   routeLayers.push(L.marker([51.592,4.776],{icon:L.divIcon({className:'',html:'<div style="'+ls+';font-size:11px">Breda</div>',iconSize:[40,16],iconAnchor:[20,20]}),interactive:false}).addTo(map));
   routeLayers.push(L.marker([51.448,4.935],{icon:L.divIcon({className:'',html:'<div style="'+ls+';font-size:10px">Baarle-Nassau</div>',iconSize:[80,16],iconAnchor:[40,8]}),interactive:false}).addTo(map));
-  map.fitBounds(L.latLngBounds(routeCoords.map(function(p){return[p[0],p[1]]})).pad(0.06));
+  map.fitBounds(L.latLngBounds(activeRoute.map(function(p){return[p[0],p[1]]})).pad(0.06));
 }
 
 /* WIND PARTICLES - thicker */
@@ -285,34 +323,80 @@ function selectHour(h){selectedHour=Math.max(4,Math.min(20,h));buildHourSelector
 
 /* WIND SCORE */
 function calcScore(wd,ws){
-  if(routeCoords.length<2)return 50;var ts=0,tw2=0,si=Math.floor(routeCoords.length*SHELTERED_FRAC);
-  var step=Math.max(1,Math.floor(routeCoords.length/80));
-  for(var i=0;i<routeCoords.length-step;i+=step){var p1=routeCoords[i],p2=routeCoords[Math.min(i+step,routeCoords.length-1)];var h=bearing(p1[0],p1[1],p2[0],p2[1]),ad=angleDiff(wd,h),tw=Math.cos(ad*Math.PI/180);var ss=(1-tw)/2,sh=i>=si;if(sh)ss=0.5+(ss-0.5)*0.4;var pen=ws>8?(ws-8)*0.01*((1+tw)/2)*(sh?0.3:1):0;ss=Math.max(0,ss-pen);var wt=sh?0.6:1;ts+=ss*wt;tw2+=wt}
-  return Math.max(0,Math.min(100,Math.round((ts/tw2)*100)))
+  return calcScoreDir(wd,ws,ROUTE_COORDS,false);
+}
+function calcScoreReverse(wd,ws){
+  var rev=ROUTE_COORDS.slice().reverse();
+  return calcScoreDir(wd,ws,rev,true);
+}
+function calcScoreDir(wd,ws,route,reversed){
+  if(route.length<2)return 50;var ts=0,tw2=0;
+  var step=Math.max(1,Math.floor(route.length/80));
+  for(var i=0;i<route.length-step;i+=step){var p1=route[i],p2=route[Math.min(i+step,route.length-1)];var h=bearing(p1[0],p1[1],p2[0],p2[1]),ad=angleDiff(wd,h),tw=Math.cos(ad*Math.PI/180);var ss=(1-tw)/2;
+    var frac=i/route.length;var sh=reversed?(frac<(1-SHELTERED_FRAC)):(frac>=SHELTERED_FRAC);
+    if(sh)ss=0.5+(ss-0.5)*0.4;var pen=ws>8?(ws-8)*0.01*((1+tw)/2)*(sh?0.3:1):0;ss=Math.max(0,ss-pen);var wt=sh?0.6:1;ts+=ss*wt;tw2+=wt}
+  return Math.max(0,Math.min(100,Math.round((ts/tw2)*100)));
+}
+function getWindCategory(score){
+  if(score>=70)return{label:'Ideaal',color:'var(--green)',icon:'\uD83D\uDFE2',desc:'Overwegend meewind. Perfecte omstandigheden.'};
+  if(score>=50)return{label:'Gunstig',color:'var(--cyan)',icon:'\uD83D\uDD35',desc:'Acceptabele wind met beperkte tegenwindstukken.'};
+  if(score>=35)return{label:'Matig',color:'var(--yellow)',icon:'\uD83D\uDFE1',desc:'Stevige wind of veel zijwind. Het kost extra energie.'};
+  return{label:'Ongunstig',color:'var(--red)',icon:'\uD83D\uDD34',desc:'Harde tegenwind. Overweeg een andere dag.'};
+}
+function getDirectionAdvice(wd,ws){
+  var scoreL=calcScore(wd,ws);
+  var scoreR=calcScoreReverse(wd,ws);
+  var total=scoreL+scoreR;
+  if(total>0&&(scoreR/total)>0.52)return{dir:'\u27F3 Andersom',detail:'Andersom fietsen is vandaag gunstiger voor de wind.',color:'var(--orange)'};
+  return{dir:'\u27F2 Standaard',detail:scoreL===scoreR?'Wind maakt vandaag geen verschil in richting.':'Standaard is de beste keuze vandaag.',color:'var(--cyan)'};
+}
+function getRainForecast(dayIdx,startHour){
+  var bars=[];var total=0;var maxR=0;
+  for(var h=0;h<3;h++){
+    var w=getWeather(dayIdx,startHour+h);
+    var r=w?w.rain:0;bars.push(r);total+=r;if(r>maxR)maxR=r;
+  }
+  var verdict,verdictCol;
+  if(total<0.1){verdict='\u2705 Droog';verdictCol='var(--green)';}
+  else if(maxR<0.5){verdict='\uD83D\uDCA7 Mogelijk motregen';verdictCol='var(--cyan)';}
+  else if(maxR<2){verdict='\uD83C\uDF27\uFE0F Lichte regen';verdictCol='var(--yellow)';}
+  else if(maxR<5){verdict='\uD83C\uDF27\uFE0F Matige regen';verdictCol='var(--orange)';}
+  else{verdict='\u26C8\uFE0F Zware regen';verdictCol='var(--red)';}
+  return{bars:bars,total:total,verdict:verdict,verdictCol:verdictCol};
 }
 
 /* GOLDEN HOUR */
 function updateGoldenHour(){
   if(!weatherCache||!weatherCache.time)return;
-  var bestScore=-1,bestIdx=-1;
-  for(var i=0;i<weatherCache.time.length;i++){
+  var bestScore=-1,bestStart=-1;
+  var maxI=weatherCache.time.length-3;
+  for(var i=0;i<maxI;i++){
     var hr=new Date(weatherCache.time[i]).getHours();
-    if(hr<7||hr>20)continue;
-    var ws=weatherCache.wind_speed_10m[i],wd=weatherCache.wind_direction_10m[i];
-    var temp=weatherCache.temperature_2m[i],rain=weatherCache.precipitation[i],clouds=weatherCache.cloud_cover[i];
-    if(rain>0.5)continue;
-    var windSc=calcScore(wd,ws);
-    var tempSc=temp>=12&&temp<=20?100:temp>=8&&temp<=25?70:temp>=5&&temp<=30?40:10;
-    var sunSc=Math.max(0,100-clouds);
-    var score=windSc*0.45+tempSc*0.25+sunSc*0.20+(rain<0.1?10:0);
-    if(score>bestScore){bestScore=score;bestIdx=i}
+    if(hr<5||hr>18)continue;
+    var blockScore=0,valid=true;
+    for(var b=0;b<4;b++){
+      if(i+b>=weatherCache.time.length){valid=false;break;}
+      var bh=new Date(weatherCache.time[i+b]).getHours();
+      if(bh<4||bh>20){valid=false;break;}
+      var ws=weatherCache.wind_speed_10m[i+b],wd=weatherCache.wind_direction_10m[i+b];
+      var temp=weatherCache.temperature_2m[i+b],rain=weatherCache.precipitation[i+b],clouds=weatherCache.cloud_cover[i+b];
+      if(rain>1.5){valid=false;break;}
+      var windSc=calcScoreDir(wd,ws,ROUTE_COORDS,false);
+      var tempSc=temp>=12&&temp<=20?100:temp>=8&&temp<=25?70:temp>=5&&temp<=30?40:10;
+      var sunSc=Math.max(0,100-clouds);
+      blockScore+=windSc*0.45+tempSc*0.25+sunSc*0.20+(rain<0.1?10:0);
+    }
+    if(!valid)continue;
+    blockScore/=4;
+    if(blockScore>bestScore){bestScore=blockScore;bestStart=i;}
   }
-  if(bestIdx<0)return;
-  var dt=new Date(weatherCache.time[bestIdx]);
-  var w=getWeather(Math.floor(bestIdx/24),bestIdx%24);
-  document.getElementById('goldenMoment').textContent=DAYS_NL[dt.getDay()]+' '+dt.getDate()+' '+MONTHS_S[dt.getMonth()]+' \u00b7 '+String(dt.getHours()).padStart(2,'0')+':00';
-  var scCol=bestScore>=70?'var(--green)':bestScore>=50?'var(--yellow)':'var(--orange)';
-  document.getElementById('goldenDetails').innerHTML='<span class="golden-score" style="background:'+scCol+';color:var(--bg-deep)">'+Math.round(bestScore)+'%</span> '+(w?Math.round(w.temp)+'\u00b0C \u00b7 '+Math.round(w.windSpeed)+' m/s \u00b7 '+(w.clouds<30?'\u2600\uFE0F Zonnig':w.clouds<60?'\u26C5 Half bewolkt':'\u2601\uFE0F Bewolkt')+(w.rain>0?' \u00b7 \uD83C\uDF27\uFE0F '+w.rain+'mm':''):'');
+  if(bestStart<0)return;
+  var dt1=new Date(weatherCache.time[bestStart]);
+  var dt2=new Date(weatherCache.time[bestStart+3]);
+  var w=getWeather(Math.floor(bestStart/24),bestStart%24);
+  document.getElementById('goldenMoment').textContent=DAYS_NL[dt1.getDay()]+' '+dt1.getDate()+' '+MONTHS_S[dt1.getMonth()]+' \u00b7 '+String(dt1.getHours()).padStart(2,'0')+':00 \u2013 '+String(dt2.getHours()+1).padStart(2,'0')+':00';
+  var cat=getWindCategory(Math.round(bestScore));
+  document.getElementById('goldenDetails').innerHTML=cat.icon+' '+cat.label+(w?' \u00b7 '+Math.round(w.temp)+'\u00b0C \u00b7 '+Math.round(w.windSpeed)+' m/s \u00b7 '+(w.clouds<30?'\u2600\uFE0F zonnig':w.clouds<60?'\u26C5 half bewolkt':'\u2601\uFE0F bewolkt'):'');
 }
 
 /* EFFECTIVE CYCLING TEMPERATURE & CLOTHING SYSTEM */
@@ -486,19 +570,41 @@ function getCyclistSVG(col,cat){
 function updateUI(){
   var w=getWeather(selectedDay,selectedHour);if(!w)return;
   startWind(w.windDir,w.windSpeed);if(routeCoords.length>0)drawRoute();
-  var sc=calcScore(w.windDir,w.windSpeed);var scCol=sc>=70?'var(--green)':sc>=40?'var(--yellow)':'var(--red)';
-  var scLbl=sc>=80?'Uitstekend':sc>=60?'Goed':sc>=40?'Matig':sc>=20?'Ongunstig':'Slecht';
-  document.getElementById('windScore').textContent=sc+'%';document.getElementById('windScore').style.color=scCol;
-  document.getElementById('windScoreLabel').textContent=scLbl;document.getElementById('windScoreLabel').style.color=scCol;
+  /* Wind categories */
+  var sc=calcScore(w.windDir,w.windSpeed);
+  var wc=getWindCategory(sc);
+  document.getElementById('windScore').textContent=wc.icon+' '+wc.label;
+  document.getElementById('windScore').style.color=wc.color;
+  document.getElementById('windScoreLabel').textContent=wc.desc;
+  document.getElementById('windScoreLabel').style.color=wc.color;
+  /* Direction advice */
+  var da=getDirectionAdvice(w.windDir,w.windSpeed);
+  document.getElementById('dirAdvice').textContent=da.dir;
+  document.getElementById('dirAdvice').style.color=da.color;
+  document.getElementById('dirAdviceDetail').textContent=da.detail;
+  /* Rain forecast */
+  var rf=getRainForecast(selectedDay,selectedHour);
+  document.getElementById('rainForecast').textContent=rf.verdict;
+  document.getElementById('rainForecast').style.color=rf.verdictCol;
+  var maxB=Math.max.apply(null,rf.bars.concat([0.5]));
+  document.getElementById('rainBars').innerHTML=rf.bars.map(function(r,i){
+    var h=Math.max(3,Math.round((r/maxB)*36));
+    var col=r<0.1?'var(--green)':r<0.5?'var(--cyan)':r<2?'var(--yellow)':r<5?'var(--orange)':'var(--red)';
+    return'<div style="text-align:center;flex:1"><div style="height:'+h+'px;background:'+col+';border-radius:3px;margin:0 auto;width:20px"></div><div style="font-size:9px;color:var(--text-muted);margin-top:3px">'+String(selectedHour+i).padStart(2,'0')+'u</div></div>';
+  }).join('');
+  document.getElementById('rainDetail').textContent=rf.total<0.05?'Geen neerslag verwacht tijdens het rondje.':'Totaal circa '+Math.round(rf.total*10)/10+' mm neerslag verwacht.';
+  /* Weather */
   document.getElementById('tempDisplay').textContent=Math.round(w.temp*10)/10+'\u00b0';
   document.getElementById('feelsLike').textContent='Voelt als '+Math.round(w.feelsLike*10)/10+'\u00b0';
   document.getElementById('weatherDetail').innerHTML='<div class="stat-detail-row">'+(w.clouds<30?'\u2600\uFE0F':w.clouds<60?'\u26C5':'\u2601\uFE0F')+' '+w.clouds+'% bewolking</div><div class="stat-detail-row">\uD83D\uDCA7 '+w.humidity+'% luchtvochtigheid</div>'+(w.rain>0?'<div class="stat-detail-row">\uD83C\uDF27\uFE0F '+w.rain+' mm neerslag</div>':'');
+  /* Wind details */
   document.getElementById('windSpeed').textContent=(Math.round(w.windSpeed*10)/10).toString();
   document.getElementById('windGust').textContent='Windstoten: '+Math.round(w.windGust*10)/10+' m/s';
   var dirs=['N','NNO','NO','ONO','O','OZO','ZO','ZZO','Z','ZZW','ZW','WZW','W','WNW','NW','NNW'];
   document.getElementById('windDirLabel').textContent=dirs[Math.round(w.windDir/22.5)%16];
   document.getElementById('windDirDeg').textContent=Math.round(w.windDir)+'\u00b0';
   document.getElementById('compassNeedle').setAttribute('transform','rotate('+w.windDir+',16,16)');
+  /* Clothing */
   var c=getClothing(w.temp,w.feelsLike,w.windSpeed,w.clouds,w.rain,0);
   document.getElementById('clothingCategory').textContent=c.icon+' '+c.cat;document.getElementById('clothingCategory').style.color=c.color;
   document.getElementById('effTempLine').textContent='Effectieve fietstemperatuur: '+c.effTemp+'\u00b0C';

@@ -452,7 +452,7 @@ function calcCivilTwilight(lat,lon,date){
   var n=Math.floor(275*m/9)-2*Math.floor((m+9)/12)+d-30;
   // zonsdeclinatie
   var B=(360/365)*(n-81)*rad;
-  var decl=Math.asin(0.39795*Math.cos(B));
+  var decl=23.45*Math.sin(B)*rad;
   // equation of time (minuten)
   var EoT=9.87*Math.sin(2*B)-7.53*Math.cos(B)-1.5*Math.sin(B);
   // uurhoek voor civil twilight (zon op -6°)

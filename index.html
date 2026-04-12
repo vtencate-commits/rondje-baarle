@@ -571,15 +571,15 @@ function getClothing(temp,feelsLike,windSpeedMs,clouds,rain,rainProb){
     longTop=false;longBot=false;
   }else if(eff>=14){
     cat='Kort / Lang';color='#eab308';icon='\uD83C\uDF25\uFE0F';
-    desc='Korte broek met een shirt met lange mouwen of armstukken.';
+    desc='Korte fietsbroek en een fietsshirt met lange mouwen.';
     longTop=true;longBot=false;
   }else if(eff>=10){
     cat='Kort / Lang';color='#d97706';icon='\uD83C\uDF25\uFE0F';
-    desc='Korte broek met armstukken en beenstukken, en een shirt met lange mouwen.';
+    desc='Korte fietsbroek en een fietsshirt met lange mouwen. Neem een windvest mee.';
     longTop=true;longBot=false;
   }else if(eff>=7){
     cat='Lang / Kort';color='#f97316';icon='\uD83C\uDF27\uFE0F';
-    desc='Fietsjack met lange mouwen en een korte broek met beenstukken of een lange broek.';
+    desc='Fietsjack met lange mouwen en een korte fietsbroek.';
     longTop=true;longBot=true;
   }else if(eff>=4){
     cat='Lang / Lang';color='#ea580c';icon='\uD83C\uDF27\uFE0F';
@@ -629,7 +629,6 @@ function getClothing(temp,feelsLike,windSpeedMs,clouds,rain,rainProb){
   if(sunny&&eff>12){tags.push('Zonnebril');if(eff>16)tags.push('Zonnebrand');}
 
   /* Notities */
-  if(eff>=10&&eff<16)notes.push('Armstukken en beenstukken zijn ideaal om onderweg te schakelen als de temperatuur wisselt.');
   if((rainProb||0)>30||rain>0.3)notes.push('Reken op nat wegdek. Wees voorzichtig in de bochten en houd rekening met spetters. Een spatwaterdichte buitenlaag en extra aandacht voor handen en voeten is verstandig.');
   if(wKmh>20)notes.push('Het waait stevig. Daardoor voelt het een stuk kouder dan de thermometer aangeeft.');
   if(sunny&&eff>=10&&eff<20)notes.push('De zon zorgt voor extra warmte. Je kunt overwegen een laag minder aan te trekken.');

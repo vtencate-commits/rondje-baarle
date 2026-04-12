@@ -218,7 +218,7 @@ body{background:var(--body-bg);font-family:'Outfit',-apple-system,sans-serif;col
     <div class="clothing-inner">
       <div class="clothing-text">
         <div class="stat-label">Kledingadvies <button class="info-btn" onclick="toggleInfo('clothingInfo')">i</button></div>
-        <div class="info-popup" id="clothingInfo"><button class="info-popup-close" onclick="toggleInfo('clothingInfo')">&times;</button>Advies op basis van effectieve fietstemperatuur. Deze wordt berekend uit de werkelijke temperatuur, gecorrigeerd voor windafkoeling, zoninstraling, neerslag en het beschutte karakter van de route. KORT/KORT = korte broek en shirt. KORT/LANG = korte mouwen, lange broek. LANG/KORT = lange mouwen, korte broek. LANG/LANG = volledige bedekking.</div>
+        <div class="info-popup" id="clothingInfo"><button class="info-popup-close" onclick="toggleInfo('clothingInfo')">&times;</button>Advies op basis van effectieve fietstemperatuur, berekend uit werkelijke temperatuur gecorrigeerd voor wind, zon en neerslag. Kort/Kort = korte broek + kort shirt. Kort/Lang = korte broek + lange mouwen. Lang/Kort = fietsjack + beenstukken. Lang/Lang = fietsjack + lange broek. Winter = volledige winteruitrusting.</div>
         <div class="clothing-category" id="clothingCategory">&mdash;</div>
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px" id="effTempLine"></div>
         <div class="clothing-desc" id="clothingDesc"></div>
@@ -259,6 +259,7 @@ function toggleInfo(id){var el=document.getElementById(id);if(!el)return;el.clas
 
 /* UPDATES PAGE */
 var UPDATES=[
+  {date:'2026-04-12',title:'Kledingadvies herzien',desc:'Kledingadvies volledig bijgewerkt op basis van de RBO-kledingadviesmodule. Correcte drempelwaarden voor handschoenen, overschoenen, ondershirt, windvest en nekwarmer. Categorienamen en notities aangepast.'},
   {date:'2026-03-29',title:'Daglicht raamtijd',desc:'Nieuwe kaart met vroegste en uiterste vertrektijd op basis van burgerlijke schemering. Houdt rekening met twee uur fietstijd.'},
   {date:'2026-03-29',title:'5 windgradaties',desc:'Route-inkleuring met vijf niveaus: vol meewind, beetje meewind, zijwind, beetje tegenwind en vol tegenwind voor duidelijker onderscheid.'},
   {date:'2026-03-29',title:'Automatische dark/light mode',desc:'Thema schakelt nu automatisch tussen licht en donker op basis van het tijdstip van de dag.'},
@@ -557,63 +558,88 @@ function getClothing(temp,feelsLike,windSpeedMs,clouds,rain,rainProb){
   var eff=calcEffTemp(temp,windSpeedMs,clouds,rain,rainProb||0);
   var wKmh=windSpeedMs*3.6;
   var sunny=clouds<30;
-
+  var longTop,longBot;
   var cat,color,icon,desc;
-  if(eff>22){cat='KORT / KORT';color='#22c55e';icon='\u2600\uFE0F';desc='Korte broek en kort fietsshirt. Kies lichte kleuren en neem zonnebescherming mee.';}
-  else if(eff>=18){cat='KORT / KORT';color='#84cc16';icon='\uD83C\uDF24\uFE0F';desc='Korte broek en kort fietsshirt. Een dun ondershirt helpt bij de zweetafvoer.';}
-  else if(eff>=14){cat='KORT / LANG';color='#eab308';icon='\uD83C\uDF25\uFE0F';desc='Korte broek gecombineerd met een shirt met lange mouwen of armstukken.';}
-  else if(eff>=10){cat='KORT / LANG';color='#d97706';icon='\uD83C\uDF25\uFE0F';desc='Korte broek met beenstukken en een shirt met armstukken. Neem een windvest mee.';}
-  else if(eff>=7){cat='LANG / KORT';color='#f97316';icon='\uD83C\uDF27\uFE0F';desc='Fietsjack met lange mouwen en een korte broek met beenstukken of een lange broek.';}
-  else if(eff>=4){cat='LANG / LANG';color='#ea580c';icon='\uD83C\uDF27\uFE0F';desc='Lange broek en fietsjack met lange mouwen. Kleed je in laagjes zodat je onderweg kunt schakelen.';}
-  else if(eff>=0){cat='LANG / LANG';color='#ef4444';icon='\u2744\uFE0F';desc='Winteruitrusting nodig. Thermogevoerde lange broek en een winddicht winterjack.';}
-  else{cat='LANG / LANG';color='#dc2626';icon='\uD83E\uDD76';desc='Extreme kou. Trek meerdere lagen aan en bescherm handen, voeten en hoofd extra goed.';}
+
+  if(eff>22){
+    cat='Kort / Kort';color='#22c55e';icon='\u2600\uFE0F';
+    desc='Korte broek en kort fietsshirt. Kies lichte kleuren en neem zonnebescherming mee.';
+    longTop=false;longBot=false;
+  }else if(eff>=18){
+    cat='Kort / Kort';color='#84cc16';icon='\uD83C\uDF24\uFE0F';
+    desc='Korte broek en kort fietsshirt. Een dun ondershirt helpt bij de zweetafvoer.';
+    longTop=false;longBot=false;
+  }else if(eff>=14){
+    cat='Kort / Lang';color='#eab308';icon='\uD83C\uDF25\uFE0F';
+    desc='Korte broek met een shirt met lange mouwen of armstukken.';
+    longTop=true;longBot=false;
+  }else if(eff>=10){
+    cat='Kort / Lang';color='#d97706';icon='\uD83C\uDF25\uFE0F';
+    desc='Korte broek met armstukken en beenstukken, en een shirt met lange mouwen.';
+    longTop=true;longBot=false;
+  }else if(eff>=7){
+    cat='Lang / Kort';color='#f97316';icon='\uD83C\uDF27\uFE0F';
+    desc='Fietsjack met lange mouwen en een korte broek met beenstukken of een lange broek.';
+    longTop=true;longBot=true;
+  }else if(eff>=4){
+    cat='Lang / Lang';color='#ea580c';icon='\uD83C\uDF27\uFE0F';
+    desc='Lange broek en fietsjack met lange mouwen.';
+    longTop=true;longBot=true;
+  }else if(eff>=0){
+    cat='Winter';color='#ef4444';icon='\u2744\uFE0F';
+    desc='Thermogevoerde lange broek en een winddicht winterjack.';
+    longTop=true;longBot=true;
+  }else{
+    cat='Winter';color='#dc2626';icon='\uD83E\uDD76';
+    desc='Extreme kou. Trek meerdere lagen aan en bescherm handen, voeten en hoofd extra goed.';
+    longTop=true;longBot=true;
+  }
 
   var tags=[];var notes=[];
+
+  /* Ondershirt */
   if(eff>20){if(sunny)tags.push('Mesh ondershirt');}
   else if(eff>=12)tags.push('Dun ondershirt');
   else if(eff>=5)tags.push('Warm ondershirt');
   else tags.push('Winter ondershirt');
 
-  if(eff>18){tags.push('Kort fietsshirt');tags.push('Korte fietsbroek');}
-  else if(eff>=14){tags.push('Shirt + armstukken');tags.push('Korte fietsbroek');}
-  else if(eff>=10){tags.push('Shirt + armstukken');tags.push('Korte broek + beenstukken');}
-  else if(eff>=7){tags.push('Fietsjack');tags.push('Korte broek + beenstukken');}
-  else if(eff>=4){tags.push('Fietsjack');tags.push('Lange fietsbroek');}
-  else if(eff>=0){tags.push('Winterjack');tags.push('Thermo bibtights');}
-  else{tags.push('Winterjack + fleece');tags.push('Thermo bibtights + legging');}
+  /* Handschoenen */
+  if(eff>=12&&eff<18)tags.push('Korte handschoenen');
+  else if(eff>=6&&eff<12)tags.push('Dunne lange handschoenen');
+  else if(eff<6)tags.push('Winterhandschoenen');
 
-  if(eff>18){}
-  else if(eff>=12)tags.push('Korte handschoenen');
-  else if(eff>=6)tags.push('Dunne lange handschoenen');
-  else tags.push('Winterhandschoenen');
+  /* Overschoenen */
+  if(eff<7)tags.push('Dikke overschoenen');
+  else if(eff<12)tags.push('Dunne overschoenen');
 
-  if(eff<7)tags.push(eff<3?'Dikke overschoenen':'Dunne overschoenen');
-  else if(eff<12&&rain>0.3)tags.push('Dunne overschoenen');
+  /* Windvest: alleen tussen 10–20 °C */
+  if(eff>=10&&eff<20&&(wKmh>20||eff<16))tags.push('Windvest');
 
-  if(wKmh>20||eff<16){if(eff>=10)tags.push('Windvest');}
+  /* Regenjack */
+  if((rainProb||0)>30||rain>0.5)tags.push('Regenjack');
 
-  if((rainProb||0)>30||rain>0.5){tags.push('Regenjack');notes.push('Er is kans op regen. Neem een regenjack mee of berg er een op in je achterzak.');}
-
+  /* Nekwarmer / buff */
   if(eff<3)tags.push('Winter nekwarmer');
   else if(eff<8)tags.push('Buff');
+
+  /* Helmmuts */
   if(eff<4)tags.push('Helmmuts');
+
+  /* Zonnebescherming */
   if(sunny&&eff>12){tags.push('Zonnebril');if(eff>16)tags.push('Zonnebrand');}
 
+  /* Notities */
   if(eff>=10&&eff<16)notes.push('Armstukken en beenstukken zijn ideaal om onderweg te schakelen als de temperatuur wisselt.');
+  if((rainProb||0)>30||rain>0.3)notes.push('Reken op nat wegdek. Wees voorzichtig in de bochten en houd rekening met spetters. Een spatwaterdichte buitenlaag en extra aandacht voor handen en voeten is verstandig.');
   if(wKmh>20)notes.push('Het waait stevig. Daardoor voelt het een stuk kouder dan de thermometer aangeeft.');
   if(sunny&&eff>=10&&eff<20)notes.push('De zon zorgt voor extra warmte. Je kunt overwegen een laag minder aan te trekken.');
   if(sunny&&eff>=20)notes.push('De zon is krachtig. Smeer je in en neem voldoende water mee.');
-  if(rain>0.3)notes.push('Reken op nat wegdek. Wees voorzichtig in de bochten en houd rekening met spetters.');
-  if(eff<10)notes.push('Het rondje is 56 km. Reken op ruim twee uur fietsen en kleed je daar warm genoeg voor.');
 
-  return{cat:cat,color:color,icon:icon,desc:desc,tags:tags,notes:notes,effTemp:eff};
+  return{cat:cat,color:color,icon:icon,desc:desc,tags:tags,notes:notes,effTemp:eff,longTop:longTop,longBot:longBot};
 }
 
 /* CYCLIST SVG - more realistic */
-function getCyclistSVG(col,cat){
-  var parts=(cat||'KORT / KORT').split('/');
-  var longTop=parts[0].trim()==='LANG';
-  var longBot=parts.length>1&&parts[1].trim()==='LANG';
+function getCyclistSVG(col,longTop,longBot){
   var skinCol='#c9956b';
   var bibCol='#1e293b';
   var legCol=longBot?bibCol:skinCol;
@@ -749,7 +775,7 @@ function updateUI(){
   document.getElementById('clothingDesc').textContent=c.desc;
   document.getElementById('clothingTags').innerHTML=c.tags.map(function(t){return'<span class="clothing-tag">'+t+'</span>'}).join('');
   document.getElementById('clothingNotes').innerHTML=c.notes.length>0?c.notes.join('<br>'):'';
-  document.getElementById('cyclistWrap').innerHTML=getCyclistSVG(c.color,c.cat);
+  document.getElementById('cyclistWrap').innerHTML=getCyclistSVG(c.color,c.longTop,c.longBot);
 }
 
 function bearing(a,b,c,d){var dl=(d-b)*Math.PI/180;var y=Math.sin(dl)*Math.cos(c*Math.PI/180);var x=Math.cos(a*Math.PI/180)*Math.sin(c*Math.PI/180)-Math.sin(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.cos(dl);return((Math.atan2(y,x)*180/Math.PI)+360)%360}
